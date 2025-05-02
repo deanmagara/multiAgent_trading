@@ -8,17 +8,17 @@ class DataFetcher:
     def fetch_data(self, ticker, period="5y", interval="1d"):
         if ticker not in self.cache:
             data = yf.download(ticker, period=period, interval=interval)
-            self.cache[ticker] = self._preprocess(data)
+            self.cache[ticker] = self.preprocess(data)
         return self.cache[ticker].copy()
 
-    def _preprocess(self, data):
+    def preprocess(self, data):
         # Add technical indicators
         data['SMA_20'] = data['Close'].rolling(20).mean()
-        data['RSI'] = self._calculate_rsi(data['Close'])
+        data['RSI'] = self.calculateRsi(data['Close'])
         data.dropna(inplace=True)
         return data
 
-    def _calculate_rsi(self, series, period=14):
+    def calculateRsi(self, series, period=14):
         delta = series.diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
