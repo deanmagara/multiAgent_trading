@@ -1,14 +1,34 @@
-import { Box, CssBaseline, Toolbar } from '@mui/material'
-import { Outlet } from 'react-router-dom'
+import { Box, CssBaseline, Toolbar, SxProps, Theme } from '@mui/material';
+import { Outlet } from 'react-router-dom';
+import { useMemo } from 'react';
 
 export function DashboardLayout() {
-    return (
-      <Box sx={{ display: 'flex' }}>
-        <CssBaseline />
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-          <Toolbar />
-          <Outlet />
-        </Box>
+  const containerStyles = useMemo<SxProps<Theme>>(
+    () => ({
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
+    }),
+    []
+  );
+
+  const mainStyles = useMemo<SxProps<Theme>>(
+    () => ({
+      flexGrow: 1,
+      p: 3,
+      display: 'flex',
+      flexDirection: 'column',
+    }),
+    []
+  );
+
+  return (
+    <Box sx={containerStyles}>
+      <CssBaseline />
+      <Box component="main" sx={mainStyles}>
+        <Toolbar />
+        <Outlet />
       </Box>
-    );
-  }
+    </Box>
+  );
+}
