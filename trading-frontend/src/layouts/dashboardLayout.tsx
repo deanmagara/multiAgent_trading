@@ -1,31 +1,28 @@
-import { Box, CssBaseline, Toolbar, SxProps, Theme } from '@mui/material';
+import { Box, CssBaseline, Toolbar } from '@mui/material';
 import { Outlet } from 'react-router-dom';
-import { useMemo } from 'react';
+import { SxProps, Theme } from '@mui/material/styles';
+import React from 'react';
+
+// Use concrete style values
+const styles: { container: SxProps<Theme>; main: SxProps<Theme> } = {
+  container: {
+    display: 'flex',
+    height: '100vh',
+    width: '100vw',
+  },
+  main: {
+    flexGrow: 1,
+    p: 3,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+} as const;
 
 export function DashboardLayout() {
-  const containerStyles = useMemo<SxProps<Theme>>(
-    () => ({
-      display: 'flex',
-      height: '100vh',
-      width: '100vw',
-    }),
-    []
-  );
-
-  const mainStyles = useMemo<SxProps<Theme>>(
-    () => ({
-      flexGrow: 1,
-      p: 3,
-      display: 'flex',
-      flexDirection: 'column',
-    }),
-    []
-  );
-
   return (
-    <Box sx={containerStyles}>
+    <Box sx={styles.container}>
       <CssBaseline />
-      <Box component="main" sx={mainStyles}>
+      <Box component="main" sx={styles.main}>
         <Toolbar />
         <Outlet />
       </Box>
