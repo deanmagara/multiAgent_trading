@@ -16,6 +16,8 @@
     "jsx": "react-jsx",
     "typeRoots": ["./node_modules/@types", "./src/@types"],
     "types": ["three", "@react-three/fiber", "jest", "node"],
+    "noErrorTruncation": true,
+    "strict":false
   },
   "include": ["src"]
 }

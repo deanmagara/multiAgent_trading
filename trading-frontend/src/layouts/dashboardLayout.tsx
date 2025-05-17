@@ -3,26 +3,25 @@ import { Outlet } from 'react-router-dom';
 import { SxProps, Theme } from '@mui/material/styles';
 import React from 'react';
 
-// Use concrete style values
-const styles: { container: SxProps<Theme>; main: SxProps<Theme> } = {
-  container: {
-    display: 'flex',
-    height: '100vh',
-    width: '100vw',
-  },
-  main: {
-    flexGrow: 1,
-    p: 3,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-} as const;
+// Split into individually typed constants
+const containerStyles: SxProps<Theme> = {
+  display: 'flex',
+  height: '100vh',
+  width: '100vw',
+};
+
+const mainStyles: SxProps<Theme> = {
+  flexGrow: 1,
+  p: 3,
+  display: 'flex',
+  flexDirection: 'column',
+};
 
 export function DashboardLayout() {
   return (
-    <Box sx={styles.container}>
+    <Box sx={containerStyles}>
       <CssBaseline />
-      <Box component="main" sx={styles.main}>
+      <Box component="main" sx={mainStyles}>
         <Toolbar />
         <Outlet />
       </Box>

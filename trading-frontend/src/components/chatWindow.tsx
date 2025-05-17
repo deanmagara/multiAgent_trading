@@ -36,7 +36,7 @@ export function ChatWindow({ messages, onSend }: ChatWindowProps) {
 
   // Simplify sx props with concrete values
   return (
-    <Box sx={{boxStyles}}>
+    <Box sx={boxStyles}>
       <List>
         {messages.map((msg, i) => (
           <ListItem key={i}>
