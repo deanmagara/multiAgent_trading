@@ -1,25 +1,68 @@
-import React from 'react';
-//import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import { Box, CssBaseline, Toolbar, styled } from '@mui/material';
+import {
+  BacktestControls,
+  ChatWindow,
+  MarketDataTicker,
+  PerformanceMetrics,
+  PortfolioChart,
+  ThreeScene,
+  VolumeVisualization
+} from './components';
+
+import { useChatbot } from './hooks/useChatbot';
+import { useMarketData } from './hooks/useMarketData';
+
+const AppContainer = styled(Box)({
+  display: 'flex',
+  height: '100vh',
+  width: '100vw',
+  overflow: 'hidden'
+});
+
+const MainContent = styled(Box)(({ theme }) => ({
+  flexGrow: 1,
+  padding: theme.spacing(3),
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(3)
+}));
 
 function App() {
+  const [activeView, setActiveView] = useState<'dashboard' | 'backtest'>('dashboard');
+  const { messages, handleSend } = useChatbot();
+  const { marketData, loading } = useMarketData();
+
   return (
-    <div style={{ width: '100vw', height: '100vh' }} className="App">
-      <header className="App-header">
-        //img src=//logo className="App-logo" alt="logo" /
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AppContainer>
+      <CssBaseline />
+      {/* Sidebar would go here */}
+      <MainContent component="main">
+        <Toolbar /> {/* For spacing below app bar */}
+        <MarketDataTicker />
+        <Box display="flex" gap={3} flex={1}>
+          {/* Left Column */}
+    
+          <Box flex={3} display="flex" flexDirection="column" gap={3}>
+            <PortfolioChart data={[]} />
+            <PerformanceMetrics
+              metrics={{
+                sharpeRatio: 1.2,
+                maxDrawdown: 8.5,
+                totalReturn: 15.3,
+                winRate: 62.7
+              }}
+            />
+          </Box>
+
+          {/* Right Column */}
+          <Box flex={2} display="flex" flexDirection="column" gap={3}>
+            <BacktestControls />
+            <ChatWindow messages={messages} onSend={handleSend} />
+          </Box>
+        </Box>
+      </MainContent>
+    </AppContainer>
   );
 }
 

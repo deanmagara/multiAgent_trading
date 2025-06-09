@@ -1,5 +1,5 @@
 import { useChatbot } from '../services/chatbot';
-import { ChatWindow } from '../components/chatWindow';
+import { ChatWindow } from '../components/ChatWindow';
 
 export function TradingChatPage() {
   const { messages, handleSend } = useChatbot();
