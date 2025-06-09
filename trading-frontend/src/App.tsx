@@ -44,7 +44,11 @@ function App() {
           {/* Left Column */}
     
           <Box flex={3} display="flex" flexDirection="column" gap={3}>
-            <PortfolioChart data={[]} />
+            <PortfolioChart data={[
+              { x: '2024-06-01', y: 10000 },
+              { x: '2024-06-02', y: 10100 },
+              { x: '2024-06-03', y: 9900 }
+            ]} />
             <PerformanceMetrics
               metrics={{
                 sharpeRatio: 1.2,

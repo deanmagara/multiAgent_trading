@@ -1,33 +1,34 @@
-import React, { useState } from 'react'; // Add React import
+import React, { useState } from 'react';
 import { DatePicker } from '@mui/x-date-pickers';
 import { TextField, TextFieldProps } from '@mui/material';
+import dayjs, { Dayjs } from 'dayjs';
 
 interface BacktestParams {
   strategy: string;
   symbol: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: Dayjs;
+  endDate: Dayjs;
   initialCapital: number;
 }
 
 export function BacktestControls() {
-  const [params, setParams] = useState<BacktestParams>({ // Fix useState usage
+  const [params, setParams] = useState<BacktestParams>({
     strategy: 'mean-reversion',
     symbol: 'AAPL',
-    startDate: new Date('2020-01-01'),
-    endDate: new Date(),
+    startDate: dayjs('2020-01-01'),
+    endDate: dayjs(),
     initialCapital: 10000
   });
 
-  return ( // Fixed typo in 'return'
+  return (
     <DatePicker
       label="Start Date"
       value={params.startDate}
-      onChange={(newValue: Date | null) => {
-        if (newValue) setParams({...params, startDate: newValue});
+      onChange={(newValue) => {
+        if (newValue) setParams({ ...params, startDate: newValue });
       }}
       slots={{
-        textField: (params: TextFieldProps) => <TextField {...params} /> // Updated render prop
+        textField: (props: TextFieldProps) => <TextField {...props} />
       }}
     />
   );

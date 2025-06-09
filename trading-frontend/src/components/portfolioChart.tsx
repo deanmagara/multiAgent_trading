@@ -8,7 +8,11 @@ interface DataPoint {
 
 export function PortfolioChart({ data }: { data: DataPoint[] }) {
   const theme = useTheme();
-  
+ 
+  if (!data || data.length === 0) {
+    return <div>No data available</div>; // Handle empty data case
+  }
+
   const chartProps: ResponsiveLineProps = { // Define props object with proper typing
     data: [{ id: 'portfolio', data }],
     margin: { top: 50, right: 110, bottom: 50, left: 60 },
