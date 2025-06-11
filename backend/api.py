@@ -16,6 +16,10 @@ def run_rl_agent():
         import traceback
         print(traceback.format_exc())  # This will show the error in your terminal
         return jsonify({'error': str(e)}), 500
-    
+
+@app.route('/')
+def index():
+    return "RL Agent API is running!"
+
 if __name__ == '__main__':
     app.run(port=5000)
