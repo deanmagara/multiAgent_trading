@@ -14,11 +14,12 @@ def train_agent(agent_type, env, **kwargs):
 
 def run_agent(agent_type, env, **kwargs):
     model = train_agent(agent_type, env, **kwargs)
-    obs = env.reset()
+    obs, _ = env.reset()
     done = False
     rewards = []
     while not done:
         action, _ = model.predict(obs)
-        obs, reward, done, info = env.step(action)
+        obs, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
         rewards.append(reward)
     return rewards
