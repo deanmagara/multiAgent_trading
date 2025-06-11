@@ -22,3 +22,8 @@ export const getPortfolioHistory = async () => {
   const { data } = await API.get('/portfolio-history')
   return data
 }
+
+export const runRLAgent = async (agentType: string) => {
+  const { data } = await axios.post('http://localhost:5000/run-agent', { agent_type: agentType });
+  return data;
+};

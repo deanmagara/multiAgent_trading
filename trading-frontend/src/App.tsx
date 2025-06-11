@@ -10,6 +10,8 @@ import {
   VolumeVisualization
 } from './components';
 
+import { runRLAgent } from './services/api';
+
 import { useChatbot } from './hooks/useChatbot';
 import { useMarketData } from './hooks/useMarketData';
 
@@ -67,6 +69,28 @@ function App() {
         </Box>
       </MainContent>
     </AppContainer>
+  );
+}
+
+function RLAgentControls() {
+  const [selectedAgent, setSelectedAgent] = useState('PPO');
+  const [result, setResult] = useState(null);
+
+  const handleRun = async () => {
+    const data = await runRLAgent(selectedAgent);
+    setResult(data.rewards);
+  };
+
+  return (
+    <div>
+      <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)}>
+        <option value="PPO">PPO</option>
+        <option value="DQN">DQN</option>
+        <option value="A2C">A2C</option>
+      </select>
+      <button onClick={handleRun}>Run Agent</button>
+      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
+    </div>
   );
 }
 
