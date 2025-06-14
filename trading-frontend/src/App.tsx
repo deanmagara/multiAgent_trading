@@ -48,11 +48,14 @@ function App() {
           {/* Left Column */}
     
           <Box flex={3} display="flex" flexDirection="column" gap={3}>
-            <PortfolioChart data={[
-              { x: '2024-06-01', y: 10000 },
-              { x: '2024-06-02', y: 10100 },
-              { x: '2024-06-03', y: 9900 }
-            ]} />
+            <PortfolioChart
+              data={[
+                { x: '2024-06-01', y: 10000 },
+                { x: '2024-06-02', y: 10100 },
+                { x: '2024-06-03', y: 9900 }
+              ]}
+            />
+
             <PerformanceMetrics
               metrics={{
                 sharpeRatio: 1.2,
@@ -74,26 +77,5 @@ function App() {
   );
 }
 
-function RLAgentControls() {
-  const [selectedAgent, setSelectedAgent] = useState('PPO');
-  const [result, setResult] = useState(null);
-
-  const handleRun = async () => {
-    const data = await runRLAgent(selectedAgent);
-    setResult(data.rewards);
-  };
-
-  return (
-    <div>
-      <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)}>
-        <option value="PPO">PPO</option>
-        <option value="DQN">DQN</option>
-        <option value="A2C">A2C</option>
-      </select>
-      <button onClick={handleRun}>Run Agent</button>
-      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
-    </div>
-  );
-}
 
 export default App;
