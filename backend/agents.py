@@ -23,3 +23,22 @@ def run_agent(agent_type, env, **kwargs):
         done = terminated or truncated
         rewards.append(reward)
     return rewards
+
+def multi_agent_coordination(agent_types, env_fn, **kwargs):
+    results = {}
+    performances = []
+    for agent_type in agent_types:
+        env = env_fn()
+        rewards = run_agent(agent_type, env, **kwargs)
+        total_reward = sum(rewards)
+        performances.append(total_reward)
+        results[agent_type] = {
+            "rewards": rewards,
+            "total_reward": total_reward
+        }
+    # Capital allocation: proportional to performance
+    total = sum(performances)
+    allocations = {agent: perf / total if total > 0 else 1/len(agent_types)
+                   for agent, perf in zip(agent_types, performances)}
+    results["allocations"] = allocations
+    return results

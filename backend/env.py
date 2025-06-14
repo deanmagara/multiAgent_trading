@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import talib
-from tradingEnv import TradingEnv
+from .tradingEnv import TradingEnv
 
 def make_env():
     df = yf.download("AAPL", period="1y", interval="1d")

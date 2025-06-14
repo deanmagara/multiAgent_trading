@@ -1,47 +1,60 @@
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 
 class TradingEnv(gym.Env):
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df):
         super().__init__()
         self.df = df.reset_index(drop=True)
         self.current_step = 0
-        self.action_space = gym.spaces.Discrete(3)  # 0: hold, 1: buy, 2: sell
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.df.shape[1],), dtype=np.float32
-        )
-        self.position = 0  # 1: long, -1: short, 0: flat
-        self.cash = 10000
+        self.action_space = gym.spaces.Discrete(3)  # hold, buy, sell
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.df.shape[1],), dtype=np.float32)
+        self.initial_cash = 10000
+        self.cash = self.initial_cash
         self.shares = 0
+        self.position = 0
+        self.last_portfolio_value = self.initial_cash
+        self.max_portfolio_value = self.initial_cash
+        self.transaction_cost = 0.001  # 0.1% per trade
 
     def reset(self, seed=None, options=None):
         self.current_step = 0
-        self.position = 0
-        self.cash = 10000
+        self.cash = self.initial_cash
         self.shares = 0
+        self.position = 0
+        self.last_portfolio_value = self.initial_cash
+        self.max_portfolio_value = self.initial_cash
         obs = self.df.iloc[self.current_step].values.astype(np.float32)
         return obs, {}
 
     def step(self, action):
         self.current_step += 1
         done = self.current_step >= len(self.df) - 1
-        reward = 0
-
         price = self.df.iloc[self.current_step]['Close']
 
-        # Simple reward logic: profit/loss from action
-        if action == 1:  # buy
-            if self.position == 0:
-                self.position = 1
-                self.entry_price = price
-        elif action == 2:  # sell
-            if self.position == 1:
-                reward = price - self.entry_price
-                self.position = 0
+        # Transaction logic
+        reward = 0
+        cost = 0
+        if action == 1 and self.position == 0:  # Buy
+            self.shares = self.cash // price
+            cost = self.shares * price * self.transaction_cost
+            self.cash -= self.shares * price + cost
+            self.position = 1
+        elif action == 2 and self.position == 1:  # Sell
+            self.cash += self.shares * price - (self.shares * price * self.transaction_cost)
+            self.shares = 0
+            self.position = 0
+
+        portfolio_value = self.cash + self.shares * price
+        profit = portfolio_value - self.last_portfolio_value
+        self.max_portfolio_value = max(self.max_portfolio_value, portfolio_value)
+        drawdown = (self.max_portfolio_value - portfolio_value) / self.max_portfolio_value
+
+        # Reward: profit minus transaction cost minus drawdown penalty
+        reward = profit - cost - (drawdown * 0.1)
+        self.last_portfolio_value = portfolio_value
 
         obs = self.df.iloc[self.current_step].values.astype(np.float32)
         return obs, reward, done, False, {}
 
     def render(self):
-        pass  # Optional: implement visualization
+        pass
