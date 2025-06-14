@@ -17,3 +17,9 @@ async def run_rl_agent(req: AgentRequest):
 @app.get("/")
 def index():
     return {"message": "RL Agent API is running!"}
+
+@app.post("/run-agent")
+async def run_rl_agent(req: AgentRequest):
+    env = make_env()
+    rewards = run_agent(req.agent_type, env, timesteps=5000)
+    return {"rewards": rewards}
