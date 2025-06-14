@@ -7,7 +7,8 @@ import {
   PerformanceMetrics,
   PortfolioChart,
   ThreeScene,
-  VolumeVisualization
+  VolumeVisualization,
+  MultiAgentControls
 } from './components';
 
 import { runRLAgent } from './services/api';
@@ -42,6 +43,7 @@ function App() {
       <MainContent component="main">
         <Toolbar /> {/* For spacing below app bar */}
         <MarketDataTicker />
+        <MultiAgentControls />
         <Box display="flex" gap={3} flex={1}>
           {/* Left Column */}
     

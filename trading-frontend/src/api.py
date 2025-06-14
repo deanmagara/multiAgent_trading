@@ -1,4 +1,3 @@
-# api.py
 from flask import Flask, request, jsonify
 from ollama_service import TradingChatbot
 

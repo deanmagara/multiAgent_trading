@@ -24,6 +24,11 @@ export const getPortfolioHistory = async () => {
 }
 
 export const runRLAgent = async (agentType: string) => {
-  const { data } = await axios.post('http://localhost:5000/run-agent', { agent_type: agentType });
+  const { data } = await axios.post("http://localhost:8000/run-agent", { agent_type: agentType });
+  return data;
+};
+
+export const runMultiAgent = async (agentTypes: string[]) => {
+  const { data } = await axios.post("http://localhost:8000/multi-agent", { agent_types: agentTypes });
   return data;
 };
