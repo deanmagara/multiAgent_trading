@@ -3,13 +3,12 @@ import pandas as pd
 
 class RLStrategy(bt.Strategy):
     def __init__(self):
-        pass  # Add indicators if needed
+        self.rsi = bt.indicators.RSI(self.datas[0], period=14)
 
     def next(self):
-        # Example: Buy if RSI < 30, Sell if RSI > 70
-        if self.datas[0].rsi[0] < 30:
+        if self.rsi[0] < 30:
             self.buy()
-        elif self.datas[0].rsi[0] > 70:
+        elif self.rsi[0] > 70:
             self.sell()
 
 def run_backtest(df: pd.DataFrame):
@@ -19,4 +18,5 @@ def run_backtest(df: pd.DataFrame):
     cerebro.addstrategy(RLStrategy)
     cerebro.broker.set_cash(10000)
     result = cerebro.run()
-    return cerebro.broker.getvalue()
+    final_value = cerebro.broker.getvalue()
+    return final_value

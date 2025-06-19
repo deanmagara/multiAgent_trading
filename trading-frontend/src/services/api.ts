@@ -32,3 +32,8 @@ export const runMultiAgent = async (agentTypes: string[]) => {
   const { data } = await axios.post("http://localhost:8000/multi-agent", { agent_types: agentTypes });
   return data;
 };
+
+export const chatWithOllama = async (message: string) => {
+  const { data } = await axios.post("http://localhost:8000/chat", { message });
+  return data.response;
+};
