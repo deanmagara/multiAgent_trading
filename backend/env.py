@@ -1,13 +1,15 @@
-import yfinance as yf
 import pandas as pd
-import talib
 from .tradingEnv import TradingEnv
+from .data import data_handler
 
-def make_env():
-    df = yf.download("AAPL", period="1y", interval="1d")
-    df = df.dropna().reset_index(drop=True)
-    # Add TA-Lib indicators
-    df['SMA_20'] = talib.SMA(df['Close'], timeperiod=20)
-    df['RSI_14'] = talib.RSI(df['Close'], timeperiod=14)
-    df = df.dropna().reset_index(drop=True)
+def make_env(df: pd.DataFrame = None, symbol: str = "AAPL", period: str = "1y", interval: str = "1d"):
+    """
+    Utility function to create a TradingEnv.
+    If df is not provided, it fetches data using the DataHandler.
+    """
+    if df is None:
+        df = data_handler.fetch_data(symbol=symbol, period=period, interval=interval)
+        if df is None:
+            raise ValueError(f"Could not fetch data for {symbol}. Environment cannot be created.")
+            
     return TradingEnv(df)

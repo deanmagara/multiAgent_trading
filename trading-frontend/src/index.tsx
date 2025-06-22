@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { TradingProvider } from './context/tradingContext'
+import { TradingContextProvider } from './context/tradingContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { LocalizationProvider } from '@mui/x-date-pickers'
@@ -11,9 +11,9 @@ const root = createRoot(document.getElementById('root')!)
 root.render(
   <QueryClientProvider client={queryClient}>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <TradingProvider>
+      <TradingContextProvider>
         <App />
-      </TradingProvider>
+      </TradingContextProvider>
     </LocalizationProvider>
   </QueryClientProvider>
 )

@@ -1,35 +1,67 @@
-import { ResponsiveLine, ResponsiveLineProps } from '@nivo/line';
-import { useTheme } from '@mui/material';
+import React from 'react';
+import { useTradingContext } from '../context/tradingContext';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Paper, Typography, Box, CircularProgress } from '@mui/material';
 
-interface DataPoint {
-  x: string;
-  y: number;
-}
+const PortfolioChart: React.FC = () => {
+    const { latestResults, isConnecting } = useTradingContext();
 
-export function PortfolioChart({ data }: { data: DataPoint[] }) {
-  const theme = useTheme();
- 
-  if (!data || data.length === 0) {
-    return <div>No data available</div>; // Handle empty data case
-  }
+    const chartData = latestResults
+        ? Object.entries(latestResults)
+            .filter(([key]) => key !== 'allocations')
+            .map(([agentName, performance]) => ({
+                name: agentName,
+                'Final Value': (performance as any).final_portfolio_value,
+            }))
+        : [];
 
-  const chartProps: ResponsiveLineProps = { // Define props object with proper typing
-    data: [{ id: 'portfolio', data }],
-    margin: { top: 50, right: 110, bottom: 50, left: 60 },
-    xScale: { type: 'time', format: '%Y-%m-%d' },
-    yScale: { type: 'linear' },
-    axisLeft: {
-      tickSize: 5,
-      tickPadding: 5,
-      format: (value: number) => `$${value.toLocaleString()}`
-    },
-    tooltip: ({ point }: { point: { data: { xFormatted: string, yFormatted: string } } }) => (
-      <div style={{ background: theme.palette.background.paper, padding: '8px 12px' }}>
-        <strong>{point.data.xFormatted}</strong>
-        <div>${point.data.yFormatted}</div>
-      </div>
-    )
-  };
+    const renderContent = () => {
+        if (isConnecting) {
+            return <Box display="flex" justifyContent="center" alignItems="center" height="100%"><CircularProgress /></Box>;
+        }
+        if (!latestResults) {
+            return <Box display="flex" justifyContent="center" alignItems="center" height="100%"><Typography>Run an analysis to see agent performance.</Typography></Box>;
+        }
+        return (
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis
+                        tickFormatter={(value) =>
+                            new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: 'USD',
+                                notation: 'compact',
+                            }).format(value)
+                        }
+                    />
+                    <Tooltip
+                        formatter={(value: number) => [
+                            new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: 'USD',
+                            }).format(value),
+                            'Final Value'
+                        ]}
+                    />
+                    <Legend />
+                    <Bar dataKey="Final Value" fill="#8884d8" />
+                </BarChart>
+            </ResponsiveContainer>
+        );
+    };
 
-  return <ResponsiveLine {...chartProps} />;
-}
+    return (
+        <Paper elevation={3} sx={{ p: 2, height: '400px' }}>
+            <Typography variant="h6" gutterBottom>
+                Agent Performance
+            </Typography>
+            <Box sx={{ height: 'calc(100% - 48px)' }}>
+                {renderContent()}
+            </Box>
+        </Paper>
+    );
+};
+
+export default PortfolioChart;

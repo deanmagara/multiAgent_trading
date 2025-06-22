@@ -28,12 +28,12 @@ export const runRLAgent = async (agentType: string) => {
   return data;
 };
 
-export const runMultiAgent = async (agentTypes: string[]) => {
-  const { data } = await axios.post("http://localhost:8000/multi-agent", { agent_types: agentTypes });
-  return data;
+export const runMultiAgent = async (agent_types: string[]) => {
+  const response = await API.post('/multi-agent', { agent_types });
+  return response.data;
 };
 
-export const chatWithOllama = async (message: string) => {
-  const { data } = await axios.post("http://localhost:8000/chat", { message });
-  return data.response;
+export const askChatbot = async (message: string) => {
+  const response = await API.post('/chat', { message });
+  return response.data;
 };

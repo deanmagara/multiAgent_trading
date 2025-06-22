@@ -1,38 +1,71 @@
-import React, { useState } from "react";
-import { runMultiAgent } from "../services/api";
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { runMultiAgent } from '../services/api';
+import { Button, Checkbox, FormControlLabel, FormGroup, CircularProgress, Box, Typography, Paper } from '@mui/material';
 
-const AGENT_OPTIONS = ["PPO", "DQN", "A2C"];
+const AGENT_OPTIONS = ['PPO', 'DQN', 'A2C'];
 
-export default function MultiAgentControls() {
-  const [selected, setSelected] = useState<string[]>([]);
-  const [result, setResult] = useState<any>(null);
+const MultiAgentControls: React.FC = () => {
+    const [selectedAgents, setSelectedAgents] = useState<string[]>(['PPO', 'A2C']);
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const options = Array.from(e.target.selectedOptions, (o) => o.value);
-    setSelected(options);
-  };
+    const mutation = useMutation({
+        mutationFn: runMultiAgent,
+        onSuccess: (data) => {
+            console.log('Multi-agent analysis successfully triggered. Results will be broadcast via WebSocket.', data);
+            // We don't need to handle the results here.
+            // The WebSocket connection will receive the data and update other components.
+        },
+        onError: (error) => {
+            console.error('Error running multi-agent analysis:', error);
+            // TODO: Add user-facing error notification (e.g., a snackbar)
+        },
+    });
 
-  const handleRun = async () => {
-    const res = await runMultiAgent(selected);
-    setResult(res);
-  };
+    const handleAgentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = event.target;
+        setSelectedAgents(prev =>
+            checked ? [...prev, name] : prev.filter(agent => agent !== name)
+        );
+    };
 
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <label>Select agents:&nbsp;</label>
-      <select multiple value={selected} onChange={handleChange} style={{ minWidth: 120 }}>
-        {AGENT_OPTIONS.map((agent) => (
-          <option key={agent} value={agent}>{agent}</option>
-        ))}
-      </select>
-      <button onClick={handleRun} disabled={selected.length === 0} style={{ marginLeft: 12 }}>
-        Run Multi-Agent
-      </button>
-      {result && (
-        <pre style={{ maxHeight: 200, overflow: "auto", marginTop: 16 }}>
-          {JSON.stringify(result, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
+    const handleRunAnalysis = () => {
+        if (selectedAgents.length > 0) {
+            mutation.mutate(selectedAgents);
+        }
+    };
+
+    return (
+        <Paper elevation={3} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+                Agent Analysis
+            </Typography>
+            <FormGroup>
+                {AGENT_OPTIONS.map(agent => (
+                    <FormControlLabel
+                        key={agent}
+                        control={
+                            <Checkbox
+                                checked={selectedAgents.includes(agent)}
+                                onChange={handleAgentChange}
+                                name={agent}
+                                disabled={mutation.isPending}
+                            />
+                        }
+                        label={agent}
+                    />
+                ))}
+            </FormGroup>
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleRunAnalysis}
+                disabled={mutation.isPending || selectedAgents.length === 0}
+                sx={{ mt: 2, width: '100%' }}
+            >
+                {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Run Analysis'}
+            </Button>
+        </Paper>
+    );
+};
+
+export default MultiAgentControls;

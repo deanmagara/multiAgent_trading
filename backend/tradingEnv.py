@@ -5,9 +5,13 @@ class TradingEnv(gym.Env):
     def __init__(self, df):
         super().__init__()
         self.df = df.reset_index(drop=True)
+        # Define the columns for the observation space
+        self.obs_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        self.obs_df = self.df[self.obs_cols]
+        
         self.current_step = 0
         self.action_space = gym.spaces.Discrete(3)  # hold, buy, sell
-        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.df.shape[1],), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(len(self.obs_cols),), dtype=np.float32)
         self.initial_cash = 10000
         self.cash = self.initial_cash
         self.shares = 0
@@ -23,7 +27,7 @@ class TradingEnv(gym.Env):
         self.position = 0
         self.last_portfolio_value = self.initial_cash
         self.max_portfolio_value = self.initial_cash
-        obs = self.df.iloc[self.current_step].values.astype(np.float32)
+        obs = self.obs_df.iloc[self.current_step].values.astype(np.float32)
         return obs, {}
 
     def step(self, action):
@@ -53,7 +57,7 @@ class TradingEnv(gym.Env):
         reward = profit - cost - (drawdown * 0.1)
         self.last_portfolio_value = portfolio_value
 
-        obs = self.df.iloc[self.current_step].values.astype(np.float32)
+        obs = self.obs_df.iloc[self.current_step].values.astype(np.float32)
         return obs, reward, done, False, {}
 
     def render(self):

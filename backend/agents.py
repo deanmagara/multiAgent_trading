@@ -1,6 +1,12 @@
 from stable_baselines3 import PPO, DQN, A2C
+from .backtest import run_backtest
+from .capital_allocator import DynamicCapitalAllocator
 
 def train_agent(agent_type, env, **kwargs):
+    # Separate the 'timesteps' argument from other model-specific hyperparameters.
+    # The 'timesteps' argument is for model.learn(), not the constructor.
+    timesteps_to_learn = kwargs.pop('timesteps', 10000)
+
     if agent_type == "PPO":
         model = PPO("MlpPolicy", env, **kwargs)
     elif agent_type == "DQN":
@@ -9,7 +15,7 @@ def train_agent(agent_type, env, **kwargs):
         model = A2C("MlpPolicy", env, **kwargs)
     else:
         raise ValueError("Unknown agent type")
-    model.learn(total_timesteps=kwargs.get("timesteps", 10000))
+    model.learn(total_timesteps=timesteps_to_learn)
     return model
 
 def run_agent(agent_type, env, **kwargs):
@@ -26,19 +32,29 @@ def run_agent(agent_type, env, **kwargs):
 
 def multi_agent_coordination(agent_types, env_fn, **kwargs):
     results = {}
-    performances = []
+    performances = {}
+    
+    base_env = env_fn()
+    df = base_env.df.copy()
+
     for agent_type in agent_types:
-        env = env_fn()
-        rewards = run_agent(agent_type, env, **kwargs)
-        total_reward = sum(rewards)
-        performances.append(total_reward)
+        train_env = env_fn()
+        model = train_agent(agent_type, train_env, **kwargs)
+        
+        final_value = run_backtest(df, model)
+        
+        performances[agent_type] = final_value
         results[agent_type] = {
-            "rewards": rewards,
-            "total_reward": total_reward
+            "final_portfolio_value": final_value
         }
-    # Capital allocation: proportional to performance
-    total = sum(performances)
-    allocations = {agent: perf / total if total > 0 else 1/len(agent_types)
-                   for agent, perf in zip(agent_types, performances)}
+        
+    allocator = DynamicCapitalAllocator(df=df)
+    last_step = len(df) - 1
+    
+    allocations = allocator.get_allocation(
+        current_step=last_step, 
+        agent_performances=performances
+    )
+    
     results["allocations"] = allocations
     return results
