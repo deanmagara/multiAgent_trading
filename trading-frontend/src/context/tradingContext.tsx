@@ -13,10 +13,20 @@ interface Signals {
     [agentName: string]: number;
 }
 
+// Add this to your TradingData interface
 export interface TradingData {
     allocations: Allocation;
     signals: Signals;
-    [agentName: string]: AgentPerformance | Allocation | Signals;
+    news_sentiment?: {
+        sentiment_analysis?: {
+            sentiment?: string;
+            score?: number;
+            summary?: string;
+            confidence?: number;
+        }
+        // ...other fields if needed
+    };
+    [agentName: string]: AgentPerformance | Allocation | Signals | any;
 }
 
 interface TradingContextState {

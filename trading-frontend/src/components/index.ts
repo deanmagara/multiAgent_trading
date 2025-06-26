@@ -8,3 +8,4 @@ export { VolumeVisualization } from './VolumeVisualization';
 export { default as MultiAgentControls } from './MultiAgentControls';
 export { default as ForexPairSelector } from './ForexPairSelector';
 export { default as ForexSignals } from './ForexSignals';
+export { default as NewsSentiment } from './NewsSentiment';

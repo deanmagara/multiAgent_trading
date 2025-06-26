@@ -32,7 +32,7 @@ export const runRLAgent = async (agentType: string) => {
 
 export async function runMultiAgent({ agent_types, pair }: { agent_types: string[], pair: string }) {
     const response = await API.post('/multi-agent', { agent_types, pair });
-    return response.data;
+  return response.data;
 }
 
 export const askChatbot = async (message: string) => {

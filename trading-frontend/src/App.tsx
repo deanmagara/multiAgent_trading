@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, CssBaseline, Toolbar, Typography, Paper, Stack, styled } from '@mui/material';
+import { Box, CssBaseline, Toolbar, Typography, Paper, Stack, styled, Chip } from '@mui/material';
 import {
   BacktestControls,
   ChatWindow,
@@ -8,12 +8,13 @@ import {
   PortfolioChart,
   MultiAgentControls,
   ForexPairSelector,
-  ForexSignals
+  ForexSignals,
+  NewsSentiment
 } from './components';
 import { useChatbot } from './hooks/useChatbot';
 import { useMarketData } from './hooks/useMarketData';
 import './App.css';
-import { TradingContextProvider } from './context/tradingContext';
+import { TradingContextProvider, useTradingContext } from './context/tradingContext';
 import { DashboardLayout } from './layouts/dashboardLayout';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -35,9 +36,24 @@ const MainContent = styled(Box)(({ theme }) => ({
 
 const queryClient = new QueryClient();
 
+const NewsSentimentFromAnalysis: React.FC = () => {
+  const { latestResults } = useTradingContext();
+  const news = latestResults?.news_sentiment?.sentiment_analysis;
+  if (!news) return null;
+  return (
+    <Paper sx={{ p: 2 }}>
+      <Typography variant="h6">News Sentiment</Typography>
+      <Chip label={news.sentiment} color={news.sentiment === 'bullish' ? 'success' : news.sentiment === 'bearish' ? 'error' : 'default'} />
+      <Typography>Score: {news.score} | Confidence: {news.confidence}%</Typography>
+      <Typography>{news.summary}</Typography>
+    </Paper>
+  );
+};
+
 function App() {
   const { messages, sendMessage, isLoading } = useChatbot();
   const [selectedPair, setSelectedPair] = useState('EURUSD=X');
+  const [newsSentiment, setNewsSentiment] = useState(null);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -54,6 +70,7 @@ function App() {
           <MarketDataTicker />
         </Paper>
         <ForexPairSelector value={selectedPair} onChange={setSelectedPair} />
+        <NewsSentiment pair={selectedPair} />
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flex={1}>
           {/* Left Column */}
           <Stack spacing={3} flex={3}>

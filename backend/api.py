@@ -9,6 +9,7 @@ from .backtest import run_backtest
 import yfinance as yf
 from .ollama_service import chatbot_service
 from .data import data_handler
+from .news_service import news_service
 
 app = FastAPI()
 
@@ -78,10 +79,15 @@ class MultiAgentRequest(BaseModel):
 @router.post("/multi-agent")
 async def run_multi_agent(req: MultiAgentRequest):
     def env_fn():
-        if not req.pair:
-            raise HTTPException(status_code=400, detail="No trading pair provided.")
-        return make_env(pair=req.pair)
+        return make_env(pair=req.pair) if req.pair else make_env()
     results = multi_agent_coordination(req.agent_types, env_fn, timesteps=5000)
+    # Add news sentiment
+    if req.pair:
+        try:
+            news_data = news_service.get_news_factor(req.pair)
+            results["news_sentiment"] = news_data
+        except Exception as e:
+            results["news_sentiment"] = {"error": str(e)}
     chatbot_service.update_context(results)
     await manager.broadcast(results)
     return results
@@ -134,6 +140,14 @@ async def get_forex_data(
     if df is not None and not df.empty:
         return df.reset_index().to_dict(orient="records")
     return []
+
+@router.get("/news-sentiment/{pair}")
+async def get_news_sentiment(pair: str):
+    try:
+        news_data = news_service.get_news_factor(pair)
+        return news_data
+    except Exception as e:
+        return {"error": str(e)}
 
 # 4. Include the router in the main FastAPI app
 app.include_router(router)
