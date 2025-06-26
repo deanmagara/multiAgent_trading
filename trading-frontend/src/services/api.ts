@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api',
+  baseURL: `${API_BASE_URL}/api`,
 })
 
 export const fetchMarketData = async () => {
@@ -24,14 +26,14 @@ export const getPortfolioHistory = async () => {
 }
 
 export const runRLAgent = async (agentType: string) => {
-  const { data } = await axios.post("http://localhost:8000/run-agent", { agent_type: agentType });
+  const { data } = await API.post('/run-agent', { agent_type: agentType });
   return data;
 };
 
-export const runMultiAgent = async (agent_types: string[]) => {
-  const response = await API.post('/multi-agent', { agent_types });
-  return response.data;
-};
+export async function runMultiAgent({ agent_types, pair }: { agent_types: string[], pair: string }) {
+    const response = await API.post('/multi-agent', { agent_types, pair });
+    return response.data;
+}
 
 export const askChatbot = async (message: string) => {
   const response = await API.post('/chat', { message });

@@ -6,3 +6,5 @@ export { default as PortfolioChart } from './PortfolioChart';
 export { ThreeScene } from './ThreeScene';
 export { VolumeVisualization } from './VolumeVisualization';
 export { default as MultiAgentControls } from './MultiAgentControls';
+export { default as ForexPairSelector } from './ForexPairSelector';
+export { default as ForexSignals } from './ForexSignals';

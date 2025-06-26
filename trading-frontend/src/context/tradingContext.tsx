@@ -9,9 +9,14 @@ interface Allocation {
     [agentName: string]: number;
 }
 
+interface Signals {
+    [agentName: string]: number;
+}
+
 export interface TradingData {
     allocations: Allocation;
-    [agentName: string]: AgentPerformance | Allocation;
+    signals: Signals;
+    [agentName: string]: AgentPerformance | Allocation | Signals;
 }
 
 interface TradingContextState {
@@ -62,10 +67,10 @@ export const TradingContextProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     const value = { latestResults, isConnecting };
 
-    return (
+  return (
         <TradingContext.Provider value={value}>
-            {children}
-        </TradingContext.Provider>
+      {children}
+    </TradingContext.Provider>
     );
 };
 
@@ -73,6 +78,6 @@ export const useTradingContext = () => {
     const context = useContext(TradingContext);
     if (context === undefined) {
         throw new Error('useTradingContext must be used within a TradingContextProvider');
-    }
+  }
     return context;
 };

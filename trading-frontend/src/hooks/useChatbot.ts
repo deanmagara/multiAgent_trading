@@ -8,12 +8,12 @@ export interface Message {
 }
 
 export const useChatbot = () => {
-    const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>([
         { 
             role: 'system', 
             content: 'Hello! After running an agent analysis, you can ask me questions like "Which agent performed best?" or "What are the capital allocations?"' 
         }
-    ]);
+  ]);
 
     const mutation = useMutation({
         mutationFn: askChatbot,
@@ -34,7 +34,7 @@ export const useChatbot = () => {
         setMessages(prev => [...prev, newUserMessage]);
         
         mutation.mutate(messageContent);
-    };
+  };
 
     return {
         messages,

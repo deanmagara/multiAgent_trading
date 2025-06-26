@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, APIRouter
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, APIRouter, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
@@ -73,10 +73,15 @@ async def run_rl_agent(req: AgentRequest):
 
 class MultiAgentRequest(BaseModel):
     agent_types: list[str]
+    pair: str
 
 @router.post("/multi-agent")
 async def run_multi_agent(req: MultiAgentRequest):
-    results = multi_agent_coordination(req.agent_types, make_env, timesteps=5000)
+    def env_fn():
+        if not req.pair:
+            raise HTTPException(status_code=400, detail="No trading pair provided.")
+        return make_env(pair=req.pair)
+    results = multi_agent_coordination(req.agent_types, env_fn, timesteps=5000)
     chatbot_service.update_context(results)
     await manager.broadcast(results)
     return results
@@ -84,15 +89,21 @@ async def run_multi_agent(req: MultiAgentRequest):
 
 '''for API integration with backtesting and RL agents''' 
 class BacktestRequest(BaseModel):
-    symbol: str = "AAPL"
+    symbol: str = None
+    pair: str = None
     period: str = "1y"
     interval: str = "1d"
 
 @router.post("/backtest")
 async def backtest(req: BacktestRequest):
-    from .agents import train_agent
-    env = make_env(symbol=req.symbol, period=req.period, interval=req.interval)
+    env = make_env(
+        symbol=req.symbol,
+        pair=req.pair,
+        period=req.period,
+        interval=req.interval
+    )
     df = env.df
+    from .agents import train_agent
     model = train_agent("PPO", env, timesteps=10000)
     final_value = run_backtest(df, model)
     return {"final_portfolio_value": final_value}
@@ -111,6 +122,17 @@ async def get_market_data(symbol: str = "AAPL"):
     df = data_handler.fetch_data(symbol=symbol, period="1d", interval="1m")
     if df is not None and not df.empty:
         return df.to_dict(orient="records")
+    return []
+
+@router.get("/forex-data")
+async def get_forex_data(
+    pair: str = Query("EURUSD=X", description="Forex pair symbol, e.g., EURUSD=X"),
+    period: str = Query("1y"),
+    interval: str = Query("1d")
+):
+    df = data_handler.fetch_forex_data(pair, period, interval)
+    if df is not None and not df.empty:
+        return df.reset_index().to_dict(orient="records")
     return []
 
 # 4. Include the router in the main FastAPI app

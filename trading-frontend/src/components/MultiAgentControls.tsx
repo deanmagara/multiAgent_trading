@@ -9,7 +9,8 @@ const MultiAgentControls: React.FC = () => {
     const [selectedAgents, setSelectedAgents] = useState<string[]>(['PPO', 'A2C']);
 
     const mutation = useMutation({
-        mutationFn: runMultiAgent,
+        mutationFn: ({ agent_types, pair }: { agent_types: string[], pair: string }) => 
+            runMultiAgent({agent_types, pair}),
         onSuccess: (data) => {
             console.log('Multi-agent analysis successfully triggered. Results will be broadcast via WebSocket.', data);
             // We don't need to handle the results here.
@@ -26,15 +27,15 @@ const MultiAgentControls: React.FC = () => {
         setSelectedAgents(prev =>
             checked ? [...prev, name] : prev.filter(agent => agent !== name)
         );
-    };
+  };
 
     const handleRunAnalysis = () => {
         if (selectedAgents.length > 0) {
-            mutation.mutate(selectedAgents);
+            mutation.mutate({ agent_types: selectedAgents, pair: 'BTC-USD' });
         }
     };
 
-    return (
+  return (
         <Paper elevation={3} sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
                 Agent Analysis
@@ -53,7 +54,7 @@ const MultiAgentControls: React.FC = () => {
                         }
                         label={agent}
                     />
-                ))}
+        ))}
             </FormGroup>
             <Button
                 variant="contained"

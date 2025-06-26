@@ -32,13 +32,59 @@ class RLStrategy(bt.Strategy):
         elif action == 2 and self.position:
             self.sell()
 
-def run_backtest(df: pd.DataFrame, model):
+def run_backtest(df, model):
+    # Ensure the index is a proper datetime object
+    if not isinstance(df.index, pd.DatetimeIndex):
+        # If the index is numeric (timestamp), convert it to datetime
+        if df.index.dtype in ['int64', 'float64']:
+            df.index = pd.to_datetime(df.index, unit='s')
+        else:
+            # If it's already a string or other format, try to parse it
+            df.index = pd.to_datetime(df.index)
+    
+    # Create a copy to avoid modifying the original dataframe
+    df_copy = df.copy()
+    
+    # Ensure all required columns exist
+    required_columns = ['open', 'high', 'low', 'close', 'volume']
+    for col in required_columns:
+        if col not in df_copy.columns:
+            # If column doesn't exist, try to find it with different case
+            col_found = False
+            for existing_col in df_copy.columns:
+                if existing_col.lower() == col:
+                    df_copy[col] = df_copy[existing_col]
+                    col_found = True
+                    break
+            if not col_found:
+                raise ValueError(f"Required column '{col}' not found in dataframe")
+    
+    # Rename columns to match backtrader expectations (lowercase)
+    column_mapping = {}
+    for col in df_copy.columns:
+        if col.lower() in required_columns:
+            column_mapping[col] = col.lower()
+    
+    if column_mapping:
+        df_copy = df_copy.rename(columns=column_mapping)
+    
+    # Create Cerebro engine
     cerebro = bt.Cerebro()
-    data = bt.feeds.PandasData(dataname=df)
+    
+    # Add data feed
+    data = bt.feeds.PandasData(dataname=df_copy)
     cerebro.adddata(data)
+    
+    # Add strategy
     cerebro.addstrategy(RLStrategy, model=model)
-    cerebro.broker.set_cash(10000)
-    # cerebro.run() returns a list of strategies. We are interested in the final value.
+    
+    # Set initial cash
+    cerebro.broker.setcash(100000.0)
+    
+    # Run backtest
     cerebro.run()
+    
+    # Get final portfolio value
     final_value = cerebro.broker.getvalue()
+    
     return final_value

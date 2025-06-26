@@ -2,6 +2,11 @@ import yfinance as yf
 import pandas as pd
 from typing import Optional
 
+FOREX_PAIRS = [
+    "EURUSD=X", "GBPUSD=X", "USDJPY=X", "USDCHF=X",
+    "AUDUSD=X", "USDCAD=X", "NZDUSD=X", "BTC-USD"
+]
+
 class DataHandler:
     """
     A class to handle fetching, preprocessing, and storing market data.
@@ -34,6 +39,12 @@ class DataHandler:
         except Exception as e:
             print(f"An error occurred while fetching data for {symbol}: {e}")
             return None
+
+    def fetch_forex_data(self, pair: str, period: str = "1y", interval: str = "1d", force_reload: bool = False) -> Optional[pd.DataFrame]:
+        # Remove the validation to allow any pair
+        # if pair not in FOREX_PAIRS:
+        #     raise ValueError(f"Unsupported forex pair: {pair}")
+        return self.fetch_data(pair, period, interval, force_reload)
 
     def preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """

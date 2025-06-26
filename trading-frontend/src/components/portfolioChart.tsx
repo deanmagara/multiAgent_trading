@@ -62,6 +62,6 @@ const PortfolioChart: React.FC = () => {
             </Box>
         </Paper>
     );
-};
+  };
 
 export default PortfolioChart;

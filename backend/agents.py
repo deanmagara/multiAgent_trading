@@ -33,6 +33,7 @@ def run_agent(agent_type, env, **kwargs):
 def multi_agent_coordination(agent_types, env_fn, **kwargs):
     results = {}
     performances = {}
+    signals = {}
     
     base_env = env_fn()
     df = base_env.df.copy()
@@ -43,10 +44,18 @@ def multi_agent_coordination(agent_types, env_fn, **kwargs):
         
         final_value = run_backtest(df, model)
         
+        # Get the last action as the latest signal
+        last_signal = None
+        if hasattr(model, "predict"):
+            obs = df.iloc[-1].values.astype("float32")
+            last_signal, _ = model.predict(obs, deterministic=True)
+        
         performances[agent_type] = final_value
         results[agent_type] = {
-            "final_portfolio_value": final_value
+            "final_portfolio_value": final_value,
+            "last_signal": int(last_signal) if last_signal is not None else None
         }
+        signals[agent_type] = int(last_signal) if last_signal is not None else None
         
     allocator = DynamicCapitalAllocator(df=df)
     last_step = len(df) - 1
@@ -57,4 +66,5 @@ def multi_agent_coordination(agent_types, env_fn, **kwargs):
     )
     
     results["allocations"] = allocations
+    results["signals"] = signals
     return results
