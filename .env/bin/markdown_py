@@ -1,4 +1,4 @@
-#!/Users/deanmagara/Desktop/Stuff/Projects/multiAgent_trading/.env/bin/python3.12
+#!/Users/deanmagara/Desktop/Stuff/Projects/multi_trading/.env/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -1,15 +1,12 @@
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
-import { Box } from './threeComponents/box' // Create this component
+import React from 'react';
+import { Paper, Typography } from '@mui/material';
 
 export function ThreeScene() {
   return (
-    <Canvas>
-      <OrbitControls />
-      <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} />
-      <Box position={[-1.2, 0, 0]} color="orange" />
-      <Box position={[1.2, 0, 0]} color="hotpink" />
-    </Canvas>
-  )
+    <Paper sx={{ p: 2, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Typography variant="h6" color="text.secondary">
+        3D Visualization (Coming Soon)
+      </Typography>
+    </Paper>
+  );
 }

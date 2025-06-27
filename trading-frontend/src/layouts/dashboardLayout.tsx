@@ -1,30 +1,20 @@
 import { Box, CssBaseline, Toolbar } from '@mui/material';
-import { Outlet } from 'react-router-dom';
 import { SxProps, Theme } from '@mui/material/styles';
 import React from 'react';
 
-// Split into individually typed constants
-const containerStyles: SxProps<Theme> = {
-  display: 'flex',
-  height: '100vh',
-  width: '100vw',
-};
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+  sx?: SxProps<Theme>;
+}
 
-const mainStyles: SxProps<Theme> = {
-  flexGrow: 1,
-  p: 3,
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-export function DashboardLayout() {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sx }) => {
   return (
-    <Box sx={containerStyles}>
+    <Box sx={{ display: 'flex', ...sx }}>
       <CssBaseline />
-      <Box component="main" sx={mainStyles}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
-        <Outlet />
+        {children}
       </Box>
     </Box>
   );
-}
+};

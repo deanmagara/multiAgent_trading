@@ -1,35 +1,36 @@
 import React, { useState } from 'react';
-import { DatePicker } from '@mui/x-date-pickers';
-import { TextField, TextFieldProps } from '@mui/material';
-import dayjs, { Dayjs } from 'dayjs';
+import { TextField, Button, Box, Typography, Paper } from '@mui/material';
 
-interface BacktestParams {
-  strategy: string;
-  symbol: string;
-  startDate: Dayjs;
-  endDate: Dayjs;
-  initialCapital: number;
-}
-
-export function BacktestControls() {
-  const [params, setParams] = useState<BacktestParams>({
-    strategy: 'mean-reversion',
-    symbol: 'AAPL',
-    startDate: dayjs('2020-01-01'),
-    endDate: dayjs(),
-    initialCapital: 10000
-  });
+const BacktestControls: React.FC = () => {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   return (
-    <DatePicker
-      label="Start Date"
-      value={params.startDate}
-      onChange={(newValue) => {
-        if (newValue) setParams({ ...params, startDate: newValue });
-      }}
-      slots={{
-        textField: (props: TextFieldProps) => <TextField {...props} />
-      }}
-    />
+    <Paper sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        Backtest Controls
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <TextField
+          label="Start Date"
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <TextField
+          label="End Date"
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <Button variant="contained" color="primary">
+          Run Backtest
+        </Button>
+      </Box>
+    </Paper>
   );
-}
+};
+
+export default BacktestControls;

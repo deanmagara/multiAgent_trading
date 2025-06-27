@@ -1,6 +1,10 @@
 from stable_baselines3 import PPO, DQN, A2C
 from .backtest import run_backtest
-from .capital_allocator import DynamicCapitalAllocator
+from .capital_allocator import CapitalAllocator
+from .signal_analyzer import SignalAnalyzer, EnhancedTradingAgent, TechnicalAgent
+import numpy as np
+from typing import Dict, List, Optional
+import logging
 
 def train_agent(agent_type, env, **kwargs):
     # Separate the 'timesteps' argument from other model-specific hyperparameters.
@@ -47,8 +51,21 @@ def multi_agent_coordination(agent_types, env_fn, **kwargs):
         # Get the last action as the latest signal
         last_signal = None
         if hasattr(model, "predict"):
-            obs = df.iloc[-1].values.astype("float32")
-            last_signal, _ = model.predict(obs, deterministic=True)
+            # Create observation in the same format as the training environment
+            last_row = df.iloc[-1]
+            obs = np.array([
+                last_row['Open'],
+                last_row['High'], 
+                last_row['Low'],
+                last_row['Close'],
+                last_row['Volume']
+            ], dtype=np.float32)
+            
+            # Add news sentiment features (default to 0.0)
+            news_features = np.array([0.0, 0.0], dtype=np.float32)
+            full_obs = np.concatenate([obs, news_features])
+            
+            last_signal, _ = model.predict(full_obs, deterministic=True)
         
         performances[agent_type] = final_value
         results[agent_type] = {
@@ -56,14 +73,19 @@ def multi_agent_coordination(agent_types, env_fn, **kwargs):
             "last_signal": int(last_signal) if last_signal is not None else None
         }
         signals[agent_type] = int(last_signal) if last_signal is not None else None
-        
-    allocator = DynamicCapitalAllocator(df=df)
-    last_step = len(df) - 1
     
-    allocations = allocator.get_allocation(
-        current_step=last_step, 
-        agent_performances=performances
-    )
+    # Create a simple allocation based on performance
+    total_performance = sum(performances.values())
+    allocations = {}
+    
+    if total_performance > 0:
+        for agent_type, performance in performances.items():
+            allocations[agent_type] = performance / total_performance
+    else:
+        # Equal allocation if no performance data
+        equal_share = 1.0 / len(agent_types)
+        for agent_type in agent_types:
+            allocations[agent_type] = equal_share
     
     results["allocations"] = allocations
     results["signals"] = signals

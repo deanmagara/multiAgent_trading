@@ -1,11 +1,10 @@
-export { BacktestControls } from './BacktestControls';
+export { default as BacktestControls } from './BacktestControls';
 export { default as ChatWindow } from './ChatWindow';
-export { MarketDataTicker } from './MarketDataTicker';
-export { PerformanceMetrics } from './PerformanceMetrics';
+export { default as MarketDataTicker } from './MarketDataTicker';
+export { default as PerformanceMetrics } from './PerformanceMetrics';
 export { default as PortfolioChart } from './PortfolioChart';
 export { ThreeScene } from './ThreeScene';
-export { VolumeVisualization } from './VolumeVisualization';
-export { default as MultiAgentControls } from './MultiAgentControls';
-export { default as ForexPairSelector } from './ForexPairSelector';
 export { default as ForexSignals } from './ForexSignals';
+export { default as RiskManagement } from './RiskManagement';
 export { default as NewsSentiment } from './NewsSentiment';
+export { default as MultiAgentControls } from './MultiAgentControls';

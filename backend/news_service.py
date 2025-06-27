@@ -3,6 +3,8 @@ import google.generativeai as genai
 import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import time
+from functools import lru_cache
 
 load_dotenv()
 
@@ -12,6 +14,8 @@ class NewsSentimentService:
         self.model = genai.GenerativeModel('gemini-pro')
         self.news_api_key = os.getenv('NEWS_API_KEY')
         self.news_api_url = "https://newsapi.org/v2/everything"
+        self.cache = {}
+        self.cache_duration = 300  # 5 minutes
 
     def fetch_forex_news(self, currency_pair, hours_back=24):
         search_terms = self._get_search_terms(currency_pair)
@@ -82,15 +86,25 @@ class NewsSentimentService:
             print(f"Error analyzing sentiment: {e}")
             return {"sentiment": "neutral", "score": 0.0, "summary": "Analysis failed", "confidence": 0}
 
+    @lru_cache(maxsize=10)
     def get_news_factor(self, currency_pair):
+        # Check cache first
+        cache_key = f"{currency_pair}_{int(time.time() // self.cache_duration)}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+        
         news_articles = self.fetch_forex_news(currency_pair)
         sentiment_analysis = self.analyze_sentiment(news_articles)
-        return {
+        result = {
             "currency_pair": currency_pair,
             "timestamp": datetime.now().isoformat(),
             "news_count": len(news_articles),
             "sentiment_analysis": sentiment_analysis,
             "recent_articles": news_articles[:5]
         }
+        
+        # Cache the result
+        self.cache[cache_key] = result
+        return result
 
 news_service = NewsSentimentService() 

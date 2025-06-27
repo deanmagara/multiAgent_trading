@@ -1,83 +1,65 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Message } from '../hooks/useChatbot';
-import { Box, TextField, Button, Paper, Typography, List, ListItem, ListItemText, CircularProgress, Avatar } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import PersonIcon from '@mui/icons-material/Person';
 
 interface ChatWindowProps {
-  messages: Message[];
-  onSend: (message: string) => void;
-    isLoading: boolean;
+  messages?: Message[];
+  onSend?: (message: string) => void;
+  isLoading?: boolean;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onSend, isLoading }) => {
-  const [input, setInput] = useState('');
-    const messagesEndRef = useRef<null | HTMLDivElement>(null);
+const ChatWindow: React.FC<ChatWindowProps> = ({ 
+  messages = [], 
+  onSend = () => {}, 
+  isLoading = false 
+}) => {
+  const [inputValue, setInputValue] = useState('');
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isLoading]);
-
-    const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim()) {
-      onSend(input);
-      setInput('');
+  const handleSend = () => {
+    if (inputValue.trim()) {
+      onSend(inputValue);
+      setInputValue('');
     }
   };
 
-    const getAvatar = (msg: Message) => (
-        <Avatar sx={{ bgcolor: msg.role === 'user' ? 'primary.main' : 'secondary.main', mr: 2 }}>
-            {msg.role === 'user' ? <PersonIcon /> : <SmartToyIcon />}
-        </Avatar>
-    );
-
   return (
-        <Paper elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-            <Typography variant="h6" gutterBottom sx={{ flexShrink: 0 }}>
-                Performance Chatbot
-            </Typography>
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', mb: 2, p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
-      <List>
-                    {messages.map((msg, index) => (
-                        <ListItem key={index} sx={{ py: 1, alignItems: 'flex-start' }}>
-                            {getAvatar(msg)}
-            <ListItemText 
-                                primary={msg.role === 'system' ? 'System' : msg.role === 'user' ? 'You' : 'Assistant'}
-                                secondary={
-                                    <Typography component="p" variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                                        {msg.content}
-                                    </Typography>
-                                }
-                                primaryTypographyProps={{ fontWeight: 'bold' }}
-            />
-          </ListItem>
+    <div className="bg-white p-4 rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4">Trading Assistant</h3>
+      <div className="h-64 overflow-y-auto mb-4 border rounded p-2">
+        {messages.map((message) => (
+          <div key={message.id} className={`mb-2 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
+            <div className={`inline-block p-2 rounded ${
+              message.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}>
+              {message.text}
+            </div>
+          </div>
         ))}
-                    {isLoading && (
-                         <ListItem sx={{ py: 1, alignItems: 'flex-start' }}>
-                            <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}><SmartToyIcon /></Avatar>
-                            <ListItemText primary="Assistant" primaryTypographyProps={{ fontWeight: 'bold' }} secondary={<CircularProgress size={20} />} />
-                        </ListItem>
-                    )}
-                    <div ref={messagesEndRef} />
-      </List>
-            </Box>
-            <Box component="form" onSubmit={handleSendMessage} sx={{ display: 'flex', flexShrink: 0 }}>
-        <TextField
-          fullWidth
-                    variant="outlined"
-                    size="small"
-                    placeholder="Ask about the analysis..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading}
+        {isLoading && (
+          <div className="text-left">
+            <div className="inline-block p-2 rounded bg-gray-200">
+              Thinking...
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Ask about trading..."
+          className="flex-1 p-2 border rounded"
         />
-                <Button type="submit" variant="contained" color="primary" sx={{ ml: 1 }} disabled={isLoading || !input.trim()}>
-                    <SendIcon />
-        </Button>
-    </Box>
-        </Paper>
+        <button
+          onClick={handleSend}
+          disabled={isLoading}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+        >
+          Send
+        </button>
+      </div>
+    </div>
   );
 };
 

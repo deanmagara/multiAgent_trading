@@ -1,44 +1,61 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { askChatbot } from '../services/api';
+import { useState, useCallback } from 'react';
 
 export interface Message {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
 }
 
 export const useChatbot = () => {
-  const [messages, setMessages] = useState<Message[]>([
-        { 
-            role: 'system', 
-            content: 'Hello! After running an agent analysis, you can ask me questions like "Which agent performed best?" or "What are the capital allocations?"' 
-        }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-    const mutation = useMutation({
-        mutationFn: askChatbot,
-        onSuccess: (data) => {
-            // Add the assistant's response to the chat
-            setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-        },
-        onError: (error) => {
-            console.error('Chatbot API error:', error);
-            setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I was unable to get a response. Please try again.' }]);
-        },
-    });
-
-    const sendMessage = (messageContent: string) => {
-        if (!messageContent.trim() || mutation.isPending) return;
-
-        const newUserMessage: Message = { role: 'user', content: messageContent };
-        setMessages(prev => [...prev, newUserMessage]);
-        
-        mutation.mutate(messageContent);
-  };
-
-    return {
-        messages,
-        sendMessage,
-        isLoading: mutation.isPending,
+  const sendMessage = useCallback(async (text: string) => {
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      sender: 'user',
+      timestamp: new Date()
     };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Add bot response
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `I received your message: "${text}". This is a simulated response from the trading assistant.`,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Sorry, I encountered an error. Please try again.',
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    messages,
+    sendMessage,
+    isLoading
+  };
 };
