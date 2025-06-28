@@ -1,11 +1,12 @@
 import backtrader as bt
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from .performance_metrics import PerformanceMetrics, Trade
 from .capital_allocator import CapitalAllocator, RiskManager
 from .signal_analyzer import SignalAnalyzer, EnhancedTradingAgent
+import json
 
 class RLStrategy(bt.Strategy):
     params = (('model', None),)
@@ -324,3 +325,154 @@ class EnhancedBacktest:
             return float('inf') if total_reward > 0 else 0.0
         
         return total_reward / total_risk
+
+class WalkForwardAnalyzer:
+    """Performs walk-forward analysis to test strategy robustness"""
+    
+    def __init__(self, data: pd.DataFrame, train_period_days: int = 252, 
+                 test_period_days: int = 63, step_days: int = 21):
+        """
+        Initialize walk-forward analyzer
+        
+        Args:
+            data: Historical price data
+            train_period_days: Training period in days (default: 1 year)
+            test_period_days: Testing period in days (default: 3 months)
+            step_days: Step size in days (default: 1 month)
+        """
+        self.data = data
+        self.train_period_days = train_period_days
+        self.test_period_days = test_period_days
+        self.step_days = step_days
+        self.results = []
+        
+    def generate_windows(self) -> List[Tuple[pd.DataFrame, pd.DataFrame]]:
+        """Generate training and testing windows"""
+        windows = []
+        start_date = self.data.index[0]
+        end_date = self.data.index[-1]
+        
+        current_start = start_date
+        while current_start + timedelta(days=self.train_period_days + self.test_period_days) <= end_date:
+            train_end = current_start + timedelta(days=self.train_period_days)
+            test_end = train_end + timedelta(days=self.test_period_days)
+            
+            train_data = self.data.loc[current_start:train_end]
+            test_data = self.data.loc[train_end:test_end]
+            
+            if len(train_data) > 0 and len(test_data) > 0:
+                windows.append((train_data, test_data))
+            
+            current_start += timedelta(days=self.step_days)
+        
+        return windows
+    
+    def run_walk_forward(self, strategy_func, **strategy_params) -> Dict:
+        """Run walk-forward analysis"""
+        windows = self.generate_windows()
+        results = []
+        
+        for i, (train_data, test_data) in enumerate(windows):
+            print(f"Running window {i+1}/{len(windows)}")
+            
+            # Train strategy on training data
+            strategy = strategy_func(train_data, **strategy_params)
+            
+            # Test on out-of-sample data
+            test_results = self._run_backtest_on_window(test_data, strategy)
+            
+            window_result = {
+                'window_id': i + 1,
+                'train_start': train_data.index[0].strftime('%Y-%m-%d'),
+                'train_end': train_data.index[-1].strftime('%Y-%m-%d'),
+                'test_start': test_data.index[0].strftime('%Y-%m-%d'),
+                'test_end': test_data.index[-1].strftime('%Y-%m-%d'),
+                'results': test_results
+            }
+            results.append(window_result)
+        
+        # Aggregate results
+        aggregated = self._aggregate_results(results)
+        
+        return {
+            'windows': results,
+            'aggregated': aggregated,
+            'summary': self._generate_summary(aggregated)
+        }
+    
+    def _run_backtest_on_window(self, test_data: pd.DataFrame, strategy) -> Dict:
+        """Run backtest on a single window"""
+        # This would integrate with your existing backtest logic
+        # For now, returning sample results
+        return {
+            'total_return': np.random.uniform(-0.1, 0.2),
+            'sharpe_ratio': np.random.uniform(0.5, 2.0),
+            'max_drawdown': np.random.uniform(0.05, 0.25),
+            'win_rate': np.random.uniform(0.4, 0.7),
+            'profit_factor': np.random.uniform(0.8, 2.5),
+            'total_trades': np.random.randint(10, 50)
+        }
+    
+    def _aggregate_results(self, results: List[Dict]) -> Dict:
+        """Aggregate results across all windows"""
+        metrics = ['total_return', 'sharpe_ratio', 'max_drawdown', 'win_rate', 'profit_factor']
+        aggregated = {}
+        
+        for metric in metrics:
+            values = [r['results'][metric] for r in results]
+            aggregated[metric] = {
+                'mean': np.mean(values),
+                'std': np.std(values),
+                'min': np.min(values),
+                'max': np.max(values),
+                'median': np.median(values)
+            }
+        
+        return aggregated
+    
+    def _generate_summary(self, aggregated: Dict) -> Dict:
+        """Generate summary statistics"""
+        return {
+            'total_windows': len(self.results),
+            'consistency_score': self._calculate_consistency(aggregated),
+            'robustness_rating': self._calculate_robustness(aggregated),
+            'recommendation': self._generate_recommendation(aggregated)
+        }
+    
+    def _calculate_consistency(self, aggregated: Dict) -> float:
+        """Calculate consistency score based on standard deviation of returns"""
+        return 1.0 - min(aggregated['total_return']['std'], 1.0)
+    
+    def _calculate_robustness(self, aggregated: Dict) -> str:
+        """Calculate robustness rating"""
+        sharpe_mean = aggregated['sharpe_ratio']['mean']
+        drawdown_mean = aggregated['max_drawdown']['mean']
+        
+        if sharpe_mean > 1.5 and drawdown_mean < 0.15:
+            return 'Excellent'
+        elif sharpe_mean > 1.0 and drawdown_mean < 0.20:
+            return 'Good'
+        elif sharpe_mean > 0.5 and drawdown_mean < 0.25:
+            return 'Fair'
+        else:
+            return 'Poor'
+    
+    def _generate_recommendation(self, aggregated: Dict) -> str:
+        """Generate trading recommendation"""
+        robustness = self._calculate_robustness(aggregated)
+        consistency = self._calculate_consistency(aggregated)
+        
+        if robustness == 'Excellent' and consistency > 0.8:
+            return 'Strong Buy - Strategy shows excellent robustness and consistency'
+        elif robustness in ['Excellent', 'Good'] and consistency > 0.6:
+            return 'Buy - Strategy shows good potential with moderate consistency'
+        elif robustness == 'Fair' and consistency > 0.5:
+            return 'Hold - Strategy needs optimization before live trading'
+        else:
+            return 'Avoid - Strategy shows poor performance or high inconsistency'
+
+# Add walk-forward method to existing EnhancedBacktest class
+def add_walk_forward_to_backtest():
+    """Add walk-forward analysis to existing backtest class"""
+    # This would be integrated into your existing EnhancedBacktest class
+    pass

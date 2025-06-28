@@ -230,10 +230,23 @@ class EnsembleVotingSystem:
         )
     
     def _prepare_dataframe(self, market_data: Dict) -> pd.DataFrame:
-        """Prepare market data as DataFrame"""
-        # This would convert your market data format to a pandas DataFrame
-        # Adjust based on your actual data structure
-        return pd.DataFrame(market_data)
+        """Prepare DataFrame from market data"""
+        # FIXED: Handle the case where market_data might be a list of records
+        if isinstance(market_data, list):
+            df = pd.DataFrame(market_data)
+        elif isinstance(market_data, dict) and 'market_data' in market_data:
+            # Handle the case where market_data is wrapped in a dict
+            df = pd.DataFrame(market_data['market_data'])
+        else:
+            df = pd.DataFrame([market_data])
+        
+        # Ensure we have the required columns
+        required_columns = ['open', 'high', 'low', 'close', 'volume']
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = 0.0
+        
+        return df
     
     def calculate_ensemble_result(self, votes: List[AgentVote]) -> EnsembleResult:
         """Calculate final ensemble result from votes"""

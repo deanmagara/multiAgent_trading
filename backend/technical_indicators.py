@@ -366,4 +366,107 @@ class TechnicalIndicators:
             'ADX': adx,
             'DI+': di_plus,
             'DI-': di_minus
-        }) 
+        })
+    
+    def calculate_all(self, df: pd.DataFrame) -> Dict:
+        """Calculate all technical indicators and return comprehensive analysis"""
+        try:
+            # Calculate basic indicators
+            rsi = self.calculate_rsi(df)
+            macd, macd_signal = self.calculate_macd(df)
+            bollinger_upper, bollinger_lower = self.calculate_bollinger_bands(df)
+            atr = self.calculate_atr(df)
+            
+            # Calculate trend indicators
+            sma_20 = self.calculate_sma(df, 20)
+            sma_50 = self.calculate_sma(df, 50)
+            ema_12 = self.calculate_ema(df, 12)
+            ema_26 = self.calculate_ema(df, 26)
+            
+            # Calculate volatility
+            volatility = self.calculate_volatility(df)
+            
+            # Generate technical scores
+            technical_score = self._calculate_technical_score(df, rsi, macd, bollinger_upper, bollinger_lower)
+            fundamental_score = self._calculate_fundamental_score(df)
+            sentiment_score = self._calculate_sentiment_score(df)
+            
+            return {
+                'rsi': rsi,
+                'macd': macd,
+                'macd_signal': macd_signal,
+                'bollinger_upper': bollinger_upper,
+                'bollinger_lower': bollinger_lower,
+                'atr': atr,
+                'sma_20': sma_20,
+                'sma_50': sma_50,
+                'ema_12': ema_12,
+                'ema_26': ema_26,
+                'volatility': volatility,
+                'technical_score': technical_score,
+                'fundamental_score': fundamental_score,
+                'sentiment_score': sentiment_score,
+                'bollinger_position': self._calculate_bollinger_position(df, bollinger_upper, bollinger_lower)
+            }
+        except Exception as e:
+            print(f"Error calculating indicators: {e}")
+            return {}
+    
+    def _calculate_technical_score(self, df: pd.DataFrame, rsi: List[float], macd: List[float], 
+                                 bollinger_upper: List[float], bollinger_lower: List[float]) -> float:
+        """Calculate overall technical score"""
+        try:
+            latest_price = df['Close'].iloc[-1]
+            latest_rsi = rsi[-1] if rsi else 50
+            latest_macd = macd[-1] if macd else 0
+            latest_bollinger_upper = bollinger_upper[-1] if bollinger_upper else latest_price
+            latest_bollinger_lower = bollinger_lower[-1] if bollinger_lower else latest_price
+            
+            # RSI analysis (0-100 scale)
+            rsi_score = 0.5
+            if latest_rsi < 30:  # Oversold
+                rsi_score = 0.8
+            elif latest_rsi > 70:  # Overbought
+                rsi_score = 0.2
+            elif 40 <= latest_rsi <= 60:  # Neutral
+                rsi_score = 0.5
+            
+            # MACD analysis
+            macd_score = 0.5
+            if latest_macd > 0:
+                macd_score = 0.7
+            else:
+                macd_score = 0.3
+            
+            # Bollinger Bands analysis
+            bb_score = 0.5
+            if latest_price <= latest_bollinger_lower:
+                bb_score = 0.8  # Potential buy
+            elif latest_price >= latest_bollinger_upper:
+                bb_score = 0.2  # Potential sell
+            
+            # Combine scores
+            technical_score = (rsi_score + macd_score + bb_score) / 3
+            return round(technical_score, 2)
+            
+        except Exception as e:
+            print(f"Error calculating technical score: {e}")
+            return 0.5
+
+    def _calculate_fundamental_score(self, df: pd.DataFrame) -> float:
+        # Implementation of _calculate_fundamental_score method
+        # This method should return a float representing the fundamental score
+        # For now, we'll return a placeholder value
+        return 0.5
+
+    def _calculate_sentiment_score(self, df: pd.DataFrame) -> float:
+        # Implementation of _calculate_sentiment_score method
+        # This method should return a float representing the sentiment score
+        # For now, we'll return a placeholder value
+        return 0.5
+
+    def _calculate_bollinger_position(self, df: pd.DataFrame, bollinger_upper: List[float], bollinger_lower: List[float]) -> float:
+        # Implementation of _calculate_bollinger_position method
+        # This method should return a float representing the bollinger position
+        # For now, we'll return a placeholder value
+        return 0.5 

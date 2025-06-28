@@ -69,6 +69,13 @@ class MultiTimeframeAnalyzer:
     
     def _resample_dataframe(self, df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
         """Resample data to different timeframe"""
+        if timeframe == '1H':
+            timeframe = '1h'
+        elif timeframe == '4H':
+            timeframe = '4h'
+        elif timeframe == '1D':
+            timeframe = '1d'
+        
         resampled = df.resample(timeframe).agg({
             'open': 'first',
             'high': 'max',
@@ -115,15 +122,19 @@ class MultiTimeframeAnalyzer:
         """Determine trend direction and strength"""
         
         # Get moving averages
-        ma_20 = indicators.get('sma_20', {}).get('value', df['close'].mean())
-        ma_50 = indicators.get('sma_50', {}).get('value', df['close'].mean())
+        sma_20_result = indicators.get('sma_20')
+        sma_50_result = indicators.get('sma_50')
+        ma_20 = sma_20_result.value if sma_20_result else df['close'].mean()
+        ma_50 = sma_50_result.value if sma_50_result else df['close'].mean()
         current_price = df['close'].iloc[-1]
         
         # Get RSI
-        rsi = indicators.get('rsi', {}).get('value', 50)
+        rsi_result = indicators.get('rsi')
+        rsi = rsi_result.value if rsi_result else 50
         
         # Get MACD
-        macd_signal = indicators.get('macd', {}).get('signal', 'neutral')
+        macd_result = indicators.get('macd')
+        macd_signal = macd_result.signal if macd_result else 'neutral'
         
         # Calculate trend strength
         trend_score = 0
@@ -213,11 +224,13 @@ class MultiTimeframeAnalyzer:
         """Calculate momentum score"""
         
         # Get RSI
-        rsi = indicators.get('rsi', {}).get('value', 50)
+        rsi_result = indicators.get('rsi')
+        rsi = rsi_result.value if rsi_result else 50
         
         # Get MACD
-        macd_value = indicators.get('macd', {}).get('macd_line', 0)
-        macd_signal = indicators.get('macd', {}).get('signal_line', 0)
+        macd_result = indicators.get('macd')
+        macd_value = macd_result.value if macd_result else 0
+        macd_signal = macd_result.signal if macd_result else 'neutral'
         
         # Calculate momentum score
         momentum_score = 0
@@ -233,7 +246,7 @@ class MultiTimeframeAnalyzer:
             momentum_score -= 0.1  # Bearish momentum
         
         # MACD momentum
-        if macd_value > macd_signal:
+        if macd_signal == 'bullish':
             momentum_score += 0.2
         else:
             momentum_score -= 0.2

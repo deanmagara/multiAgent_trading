@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import time
 from functools import lru_cache
+import pandas as pd
+from typing import List, Dict, Optional
+import json
 
 load_dotenv()
 
@@ -106,5 +109,184 @@ class NewsSentimentService:
         # Cache the result
         self.cache[cache_key] = result
         return result
+
+class EconomicCalendar:
+    """Economic calendar service for trading events"""
+    
+    def __init__(self):
+        self.base_url = "https://api.fxstreet.com/v1/economic-calendar"  # Example API
+        self.api_key = None  # You would need to get an API key
+        self.cache = {}
+        self.cache_duration = timedelta(hours=1)
+    
+    def get_economic_events(self, start_date: str = None, end_date: str = None, 
+                           currency: str = None, impact: str = None) -> List[Dict]:
+        """
+        Get economic calendar events
+        
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            currency: Filter by currency (USD, EUR, GBP, etc.)
+            impact: Filter by impact (High, Medium, Low)
+        """
+        # For now, return sample data since we don't have API access
+        return self._get_sample_events(start_date, end_date, currency, impact)
+    
+    def _get_sample_events(self, start_date: str = None, end_date: str = None,
+                          currency: str = None, impact: str = None) -> List[Dict]:
+        """Get sample economic events for testing"""
+        sample_events = [
+            {
+                "id": 1,
+                "date": "2024-01-15T14:30:00Z",
+                "currency": "USD",
+                "event": "Federal Reserve Interest Rate Decision",
+                "impact": "High",
+                "previous": "5.50%",
+                "forecast": "5.50%",
+                "actual": None,
+                "description": "Federal Reserve announces interest rate decision"
+            },
+            {
+                "id": 2,
+                "date": "2024-01-16T13:30:00Z",
+                "currency": "EUR",
+                "event": "ECB President Lagarde Speech",
+                "impact": "Medium",
+                "previous": None,
+                "forecast": None,
+                "actual": None,
+                "description": "European Central Bank President Christine Lagarde speaks"
+            },
+            {
+                "id": 3,
+                "date": "2024-01-17T09:30:00Z",
+                "currency": "GBP",
+                "event": "UK CPI (YoY)",
+                "impact": "High",
+                "previous": "4.6%",
+                "forecast": "4.4%",
+                "actual": None,
+                "description": "UK Consumer Price Index year-over-year"
+            },
+            {
+                "id": 4,
+                "date": "2024-01-18T13:30:00Z",
+                "currency": "USD",
+                "event": "US Initial Jobless Claims",
+                "impact": "Medium",
+                "previous": "218K",
+                "forecast": "215K",
+                "actual": None,
+                "description": "US Initial Jobless Claims weekly report"
+            },
+            {
+                "id": 5,
+                "date": "2024-01-19T15:00:00Z",
+                "currency": "CAD",
+                "event": "Bank of Canada Interest Rate Decision",
+                "impact": "High",
+                "previous": "5.00%",
+                "forecast": "5.00%",
+                "actual": None,
+                "description": "Bank of Canada announces interest rate decision"
+            }
+        ]
+        
+        # Filter by date range
+        if start_date:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            sample_events = [e for e in sample_events 
+                           if datetime.fromisoformat(e['date'].replace('Z', '+00:00')) >= start_dt]
+        
+        if end_date:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            sample_events = [e for e in sample_events 
+                           if datetime.fromisoformat(e['date'].replace('Z', '+00:00')) <= end_dt]
+        
+        # Filter by currency
+        if currency:
+            sample_events = [e for e in sample_events if e['currency'] == currency]
+        
+        # Filter by impact
+        if impact:
+            sample_events = [e for e in sample_events if e['impact'] == impact]
+        
+        return sample_events
+    
+    def get_high_impact_events(self, days_ahead: int = 7) -> List[Dict]:
+        """Get high impact events in the next N days"""
+        end_date = (datetime.now() + timedelta(days=days_ahead)).strftime('%Y-%m-%d')
+        return self.get_economic_events(
+            start_date=datetime.now().strftime('%Y-%m-%d'),
+            end_date=end_date,
+            impact="High"
+        )
+    
+    def should_avoid_trading(self, pair: str, hours_before: int = 2) -> bool:
+        """
+        Check if trading should be avoided due to upcoming high-impact events
+        
+        Args:
+            pair: Currency pair (e.g., "EUR/USD")
+            hours_before: Hours before event to avoid trading
+        """
+        # Extract currencies from pair
+        currencies = pair.split('/')
+        if len(currencies) != 2:
+            return False
+        
+        base_currency, quote_currency = currencies
+        
+        # Get high impact events in the next few hours
+        end_time = datetime.now() + timedelta(hours=hours_before)
+        events = self.get_high_impact_events(days_ahead=1)
+        
+        for event in events:
+            event_time = datetime.fromisoformat(event['date'].replace('Z', '+00:00'))
+            if (event['currency'] in [base_currency, quote_currency] and 
+                event_time <= end_time):
+                return True
+        
+        return False
+
+    def get_real_economic_events(self, start_date: str = None, end_date: str = None, 
+                               currency: str = None, impact: str = None) -> List[Dict]:
+        """Get real economic calendar events from a free API"""
+        try:
+            # Using a free economic calendar API
+            url = "https://api.tradingeconomics.com/calendar"
+            params = {
+                'c': 'guest:guest',  # Free API key
+                'd1': start_date or datetime.now().strftime('%Y-%m-%d'),
+                'd2': end_date or (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d'),
+            }
+            
+            if currency:
+                params['country'] = currency
+                
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                events = []
+                for event in data:
+                    events.append({
+                        "id": event.get('Id', 0),
+                        "date": event.get('Date', ''),
+                        "currency": event.get('Country', ''),
+                        "event": event.get('Event', ''),
+                        "impact": event.get('Importance', 'Medium'),
+                        "previous": event.get('Previous', None),
+                        "forecast": event.get('Forecast', None),
+                        "actual": event.get('Actual', None),
+                        "description": event.get('Category', '')
+                    })
+                return events
+        except Exception as e:
+            print(f"Error fetching economic calendar: {e}")
+        
+        # Fallback to sample data
+        return self._get_sample_events(start_date, end_date, currency, impact)
 
 news_service = NewsSentimentService() 

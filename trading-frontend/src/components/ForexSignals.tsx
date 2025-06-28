@@ -58,6 +58,7 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
 }) => {
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [expandedSignals, setExpandedSignals] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(isLoading);
 
   const getDirectionIcon = (direction: string) => {
     return direction === 'buy' ? (
@@ -106,14 +107,19 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
         <CardHeader title="Forex Signals" />
         <CardContent>
           <Typography variant="body2" color="text.secondary" align="center">
-            No signals available for the selected pair
+            {loading ? 'Loading signals...' : 'No signals available for the selected pair'}
           </Typography>
+          {!loading && (
+            <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 1 }}>
+              Try selecting a different currency pair or check back later.
+            </Typography>
+          )}
         </CardContent>
       </Card>
     );
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <Card>
         <CardHeader title="Forex Signals" />

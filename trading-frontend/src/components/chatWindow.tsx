@@ -1,66 +1,113 @@
 import React, { useState } from 'react';
-import { Message } from '../hooks/useChatbot';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  TextField,
+  Button,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
+  Alert,
+  IconButton
+} from '@mui/material';
+import { Clear, Send } from '@mui/icons-material';
+import { useOllama } from '../hooks/useOllama';
 
-interface ChatWindowProps {
-  messages?: Message[];
-  onSend?: (message: string) => void;
-  isLoading?: boolean;
-}
+const ChatWindow: React.FC = () => {
+  const [input, setInput] = useState('');
+  const { messages, loading, error, sendMessage, clearMessages } = useOllama();
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ 
-  messages = [], 
-  onSend = () => {}, 
-  isLoading = false 
-}) => {
-  const [inputValue, setInputValue] = useState('');
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    
+    await sendMessage(input);
+    setInput('');
+  };
 
-  const handleSend = () => {
-    if (inputValue.trim()) {
-      onSend(inputValue);
-      setInputValue('');
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4">Trading Assistant</h3>
-      <div className="h-64 overflow-y-auto mb-4 border rounded p-2">
-        {messages.map((message) => (
-          <div key={message.id} className={`mb-2 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
-            <div className={`inline-block p-2 rounded ${
-              message.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            }`}>
-              {message.text}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="text-left">
-            <div className="inline-block p-2 rounded bg-gray-200">
-              Thinking...
-            </div>
-          </div>
+    <Card sx={{ height: 500, display: 'flex', flexDirection: 'column' }}>
+      <CardHeader 
+        title="Ollama LLM Chat" 
+        action={
+          <IconButton onClick={clearMessages} size="small">
+            <Clear />
+          </IconButton>
+        }
+      />
+      
+      <CardContent sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ask about trading..."
-          className="flex-1 p-2 border rounded"
+        
+        <List>
+          {messages.map((msg) => (
+            <ListItem key={msg.id} sx={{ 
+              justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+              mb: 1
+            }}>
+              <Box sx={{
+                maxWidth: '70%',
+                backgroundColor: msg.sender === 'user' ? 'primary.main' : 'grey.100',
+                color: msg.sender === 'user' ? 'white' : 'text.primary',
+                borderRadius: 2,
+                p: 1.5,
+                wordBreak: 'break-word'
+              }}>
+                <Typography variant="body2">
+                  {msg.text}
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.7, mt: 0.5, display: 'block' }}>
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </Typography>
+              </Box>
+            </ListItem>
+          ))}
+        </List>
+        
+        {loading && (
+          <Box display="flex" justifyContent="center" mt={2}>
+            <CircularProgress size={24} />
+          </Box>
+        )}
+      </CardContent>
+      
+      <Box sx={{ display: 'flex', p: 2, pt: 0 }}>
+        <TextField
+          fullWidth
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask about trading strategies, backtest results, or market analysis..."
+          disabled={loading}
+          multiline
+          maxRows={3}
         />
-        <button
+        <Button
+          variant="contained"
           onClick={handleSend}
-          disabled={isLoading}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          disabled={loading || !input.trim()}
+          sx={{ ml: 2 }}
+          endIcon={<Send />}
         >
           Send
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Card>
   );
 };
 
-export default ChatWindow;
+export default ChatWindow; 

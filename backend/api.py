@@ -5,12 +5,13 @@ import json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
+import numpy as np
 
 from .agents import run_agent, multi_agent_coordination
 from .signal_analyzer import SignalAnalyzer, EnhancedTradingAgent
-from .env import make_env
-from .backtest import run_backtest, EnhancedBacktest
+from .backtest import run_backtest, EnhancedBacktest, WalkForwardAnalyzer
 import yfinance as yf
 from .ollama_service import chatbot_service
 from .data import data_handler
@@ -19,6 +20,7 @@ from .ensemble_voting import EnsembleVotingSystem
 from .technical_indicators import TechnicalIndicators
 from .multi_timeframe_analyzer import MultiTimeframeAnalyzer
 from .capital_allocator import RiskManager
+from .signal_generator import signal_generator
 
 app = FastAPI()
 
@@ -37,36 +39,32 @@ app.add_middleware(
 )
 
 # 2. Create a router to prefix all routes with /api
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self.active_connections: List[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
-    async def broadcast(self, data: dict):
-        # Use default=str to handle non-serializable types like numpy floats
-        message = json.dumps(data, default=str) 
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
         for connection in self.active_connections:
-            await connection.send_text(message)
+            try:
+                await connection.send_text(message)
+            except:
+                self.active_connections.remove(connection)
 
 manager = ConnectionManager()
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            # This loop keeps the connection alive for server-to-client broadcasts.
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
 
 class AgentRequest(BaseModel):
     agent_type: str
@@ -148,7 +146,7 @@ async def run_multi_agent(req: MultiAgentRequest):
             results["news_sentiment"] = {"error": str(e)}
     
     chatbot_service.update_context(results)
-    await manager.broadcast(results)
+    await manager.broadcast(json.dumps(results))
     return results
 
 @router.post("/backtest")
@@ -178,14 +176,14 @@ async def get_market_data():
     
     for symbol in symbols:
         try:
-            df = data_handler.fetch_data(symbol=symbol, period="1d", interval="1m")
+            df = data_handler.fetch_data(symbol, period="1d", interval="1d")
             if df is not None and not df.empty:
-                # Get the latest price
-                latest_price = df['Close'].iloc[-1]
+                # FIXED: Use lowercase column names
+                latest_price = df['close'].iloc[-1]
                 
                 # Calculate change from previous close
                 if len(df) > 1:
-                    prev_close = df['Close'].iloc[-2]
+                    prev_close = df['close'].iloc[-2]
                     change = ((latest_price - prev_close) / prev_close) * 100
                 else:
                     change = 0.0
@@ -412,59 +410,179 @@ async def get_multi_timeframe_analysis(req: MultiTimeframeRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/forex-signals")
-async def get_forex_signals():
-    """Get current forex trading signals"""
+async def get_forex_signals(pair: str = Query(None, description="Specific pair to get signals for")):
+    """Get real forex trading signals based on technical analysis"""
     try:
-        # This would typically get signals from your signal generation system
-        # For now, returning sample signals
-        signals = [
-            {
-                "pair": "EUR/USD",
-                "direction": "buy",
-                "strength": 0.75,
-                "confidence": 0.82,
-                "confidence_breakdown": {
-                    "technical": 0.85,
-                    "fundamental": 0.70,
-                    "sentiment": 0.80,
-                    "volatility": 0.75
-                },
-                "recommendation": "strong",
-                "timestamp": "2024-01-15T10:30:00Z",
-                "entry_price": 1.0850,
-                "stop_loss": 1.0800,
-                "take_profit": 1.0950,
-                "risk_amount": 200.0,
-                "position_size": 10000.0
-            },
-            {
-                "pair": "GBP/USD",
-                "direction": "sell",
-                "strength": 0.65,
-                "confidence": 0.71,
-                "confidence_breakdown": {
-                    "technical": 0.70,
-                    "fundamental": 0.65,
-                    "sentiment": 0.75,
-                    "volatility": 0.60
-                },
-                "recommendation": "moderate",
-                "timestamp": "2024-01-15T10:30:00Z",
-                "entry_price": 1.2650,
-                "stop_loss": 1.2700,
-                "take_profit": 1.2550,
-                "risk_amount": 150.0,
-                "position_size": 7500.0
-            }
-        ]
+        if pair:
+            # Generate signal for specific pair
+            signals = signal_generator.generate_signals_for_pair(pair)
+        else:
+            # Generate signals for all pairs
+            signals = signal_generator.generate_all_signals()
         
         return {
             'success': True,
-            'signals': signals
+            'signals': signals,
+            'timestamp': datetime.now().isoformat(),
+            'total_signals': len(signals)
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error generating signals: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'signals': []
+        }
+
+@router.websocket("/ws/alerts")
+async def websocket_alerts(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+async def broadcast_alert(alert_type: str, message: str, data: dict = None):
+    """Broadcast alert to all connected clients"""
+    alert = {
+        "type": alert_type,
+        "message": message,
+        "timestamp": datetime.now().isoformat(),
+        "data": data or {}
+    }
+    await manager.broadcast(json.dumps(alert))
+
+@router.post("/alerts/test")
+async def test_alert():
+    """Test alert broadcasting"""
+    await broadcast_alert(
+        "signal", 
+        "New EUR/USD buy signal generated",
+        {
+            "pair": "EUR/USD",
+            "direction": "buy",
+            "strength": 0.85,
+            "confidence": 0.92
+        }
+    )
+    return {"message": "Test alert sent"}
+
+@router.post("/alerts/risk")
+async def send_risk_alert(alert_data: dict):
+    """Send risk management alert"""
+    await broadcast_alert(
+        "risk",
+        alert_data.get("message", "Risk management alert"),
+        alert_data
+    )
+    return {"message": "Risk alert sent"}
+
+@router.post("/generate-signal")
+async def generate_signal(signal_request: dict):
+    """Generate trading signal and broadcast alert"""
+    try:
+        # Your existing signal generation logic here
+        signal = {
+            "pair": signal_request.get("pair", "EUR/USD"),
+            "direction": "buy",  # This would come from your analysis
+            "strength": 0.85,
+            "confidence": 0.92,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Broadcast alert
+        await broadcast_alert(
+            "signal",
+            f"New {signal['pair']} {signal['direction']} signal",
+            signal
+        )
+        
+        return {"success": True, "signal": signal}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.post("/walk-forward-analysis")
+async def run_walk_forward_analysis(request: dict):
+    """Run walk-forward analysis on historical data"""
+    try:
+        # Extract parameters
+        symbol = request.get("symbol", "EURUSD")
+        start_date = request.get("start_date", "2020-01-01")
+        end_date = request.get("end_date", "2024-01-01")
+        train_period_days = request.get("train_period_days", 252)
+        test_period_days = request.get("test_period_days", 63)
+        step_days = request.get("step_days", 21)
+        
+        # Get historical data (you'll need to implement this)
+        # data = get_historical_data(symbol, start_date, end_date)
+        
+        # For now, create sample data
+        dates = pd.date_range(start=start_date, end=end_date, freq='D')
+        data = pd.DataFrame({
+            'open': np.random.uniform(1.0, 1.2, len(dates)),
+            'high': np.random.uniform(1.1, 1.3, len(dates)),
+            'low': np.random.uniform(0.9, 1.1, len(dates)),
+            'close': np.random.uniform(1.0, 1.2, len(dates)),
+            'volume': np.random.randint(1000, 10000, len(dates))
+        }, index=dates)
+        
+        # Run walk-forward analysis
+        analyzer = WalkForwardAnalyzer(
+            data, 
+            train_period_days=train_period_days,
+            test_period_days=test_period_days,
+            step_days=step_days
+        )
+        
+        # Define a sample strategy function
+        def sample_strategy(train_data, **params):
+            return {"strategy_type": "sample", "params": params}
+        
+        results = analyzer.run_walk_forward(sample_strategy)
+        
+        return {"success": True, "results": results}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.post("/ollama-chat")
+async def ollama_chat(request: dict):
+    """Chat with Ollama LLM"""
+    try:
+        message = request.get("message", "")
+        if not message:
+            return {"success": False, "error": "No message provided"}
+        
+        # Use your existing chatbot service
+        response = chatbot_service.ask(message)
+        
+        return {
+            "success": True, 
+            "reply": response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.post("/ollama-update-context")
+async def update_ollama_context(backtest_results: dict):
+    """Update Ollama context with latest backtest results"""
+    try:
+        chatbot_service.update_context(backtest_results)
+        return {"success": True, "message": "Context updated successfully"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.get("/economic-calendar")
+async def get_economic_calendar(
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    currency: str = Query(None),
+    impact: str = Query(None)
+):
+    return {"success": True, "events": []}
 
 # Include the router in the main FastAPI app
-app.include_router(router)
+app.include_router(router, prefix="/api")

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Grid, Paper, Typography, Box } from '@mui/material';
+import { Container, Grid, Typography, Box, Button, Card, CardContent } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import './App.css';
@@ -10,25 +10,29 @@ import ForexPairSelector from './components/ForexPairSelector';
 import ForexSignals from './components/ForexSignals';
 import NewsSentiment from './components/NewsSentiment';
 import PortfolioChart from './components/PortfolioChart';
-import ChatWindow from './components/ChatWindow';
-
-// Import new enhanced components
 import PerformanceMetrics from './components/PerformanceMetrics';
 import RiskManagement from './components/RiskManagement';
 
+// Import Week 5-6 components
+import WalkForwardAnalysis from './components/WalkForwardAnalysis';
+import LiveAlerts from './components/LiveAlerts';
+import EconomicCalendar from './components/EconomicCalendar';
+
 // Import hooks and services
 import { useMarketData } from './hooks/useMarketData';
-import { Message } from './hooks/useChatbot';
 import { api } from './services/api';
+
+// Import ChatWindow component
+import ChatWindow from './components/ChatWindow';
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#1976d2',
+      main: '#90caf9',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#f48fb1',
     },
   },
 });
@@ -36,21 +40,13 @@ const theme = createTheme({
 function App() {
   const [selectedPair, setSelectedPair] = useState('EURUSD=X');
   const [performanceMetrics, setPerformanceMetrics] = useState(null);
-  const [riskParams, setRiskParams] = useState({
-    max_risk_per_trade: 0.02,
-    max_portfolio_risk: 0.06,
-    stop_loss_pips: 50,
-    take_profit_pips: 100,
-    max_correlation: 0.7,
-    max_positions: 5
-  });
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'analysis', 'calendar'
 
-  const [chatMessages, setChatMessages] = useState<Message[]>([]);
-  const [isChatLoading, setIsChatLoading] = useState(false);
+  // Get market data with selected pair
+  const { marketData, signals, loading } = useMarketData();
 
-  // Update the conversion logic to handle all pairs correctly
+  // Convert pair format for signals (EURUSD=X -> EUR/USD)
   const formatPairForSignals = (pair: string): string => {
-    // Convert EURUSD=X -> EUR/USD, GBPUSD=X -> GBP/USD, etc.
     const pairMap: { [key: string]: string } = {
       'EURUSD=X': 'EUR/USD',
       'GBPUSD=X': 'GBP/USD',
@@ -64,180 +60,183 @@ function App() {
     return pairMap[pair] || pair.replace('=X', '').replace('USD', '/USD');
   };
 
-  // Update the useMarketData call
-  const formattedPair = formatPairForSignals(selectedPair);
-  const { marketData, signals } = useMarketData(formattedPair);
+  // Filter signals for selected pair
+  const filteredSignals = signals.filter(signal => {
+    const formattedSelectedPair = formatPairForSignals(selectedPair);
+    console.log(`Comparing signal pair: "${signal.pair}" with formatted selected pair: "${formattedSelectedPair}"`);
+    return signal.pair === formattedSelectedPair;
+  });
+
+  // Debug logging
+  console.log('Debug:', {
+    selectedPair,
+    formattedSelectedPair: formatPairForSignals(selectedPair),
+    allSignals: signals,
+    filteredSignals,
+    loading
+  });
 
   useEffect(() => {
     // Fetch performance metrics
     const fetchMetrics = async () => {
       try {
         const response = await api.getPerformanceMetrics();
-        console.log('Performance metrics response:', response); // Debug log
+        console.log('Performance metrics response:', response);
         
         if (response.success && response.metrics) {
           setPerformanceMetrics(response.metrics);
         } else {
-          // Fallback data if API fails
-          console.log('Using fallback performance metrics');
+          // Use fallback data if API fails
           setPerformanceMetrics({
             total_trades: 150,
             win_rate: 0.62,
-            profit_factor: 1.7,
-            sharpe_ratio: 1.8,
-            max_drawdown: {
-              max_drawdown_pct: 12.5
-            },
-            risk_adjusted_return: 0.15,
-            total_return: 0.25,
-            current_capital: 12500,
-            average_trade_duration: '2.5 hours'
+            profit_factor: 1.85,
+            sharpe_ratio: 1.72,
+            max_drawdown: 0.12,
+            total_return: 0.28,
+            avg_trade_duration: 2.5,
+            risk_adjusted_return: 1.45
           });
         }
       } catch (error) {
-        console.error('Error fetching performance metrics:', error);
-        // Fallback data on error
+        console.error('Failed to fetch performance metrics:', error);
+        // Use fallback data
         setPerformanceMetrics({
           total_trades: 150,
           win_rate: 0.62,
-          profit_factor: 1.7,
-          sharpe_ratio: 1.8,
-          max_drawdown: {
-            max_drawdown_pct: 12.5
-          },
-          risk_adjusted_return: 0.15,
-          total_return: 0.25,
-          current_capital: 12500,
-          average_trade_duration: '2.5 hours'
+          profit_factor: 1.85,
+          sharpe_ratio: 1.72,
+          max_drawdown: 0.12,
+          total_return: 0.28,
+          avg_trade_duration: 2.5,
+          risk_adjusted_return: 1.45
         });
       }
     };
 
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // Update every 30 seconds
-    return () => clearInterval(interval);
   }, []);
 
-  const handleChatSend = (message: string) => {
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: message,
-      sender: 'user',
-      timestamp: new Date()
-    };
-    setChatMessages(prev => [...prev, userMessage]);
-    
-    // Simulate bot response
-    setIsChatLoading(true);
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `I received your message: "${message}". This is a simulated response.`,
-        sender: 'bot',
-        timestamp: new Date()
-      };
-      setChatMessages(prev => [...prev, botMessage]);
-      setIsChatLoading(false);
-    }, 1000);
-  };
+  const renderDashboard = () => (
+    <Grid container spacing={3}>
+      {/* Market Data Ticker */}
+      <Grid item xs={12}>
+        <MarketDataTicker marketData={marketData} loading={loading} />
+      </Grid>
 
-  const handlePairChange = (pair: string) => {
-    setSelectedPair(pair);
-    console.log('Selected pair:', pair);
-    console.log('Formatted pair for signals:', formatPairForSignals(pair));
-  };
+      {/* Forex Pair Selector */}
+      <Grid item xs={12} md={3}>
+        <ForexPairSelector 
+          value={selectedPair} 
+          onChange={setSelectedPair} 
+        />
+      </Grid>
+
+      {/* Forex Signals */}
+      <Grid item xs={12} md={9}>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6">Debug Info</Typography>
+              <Typography>Selected Pair: {selectedPair}</Typography>
+              <Typography>Formatted Pair: {formatPairForSignals(selectedPair)}</Typography>
+              <Typography>Total Signals: {signals.length}</Typography>
+              <Typography>Filtered Signals: {filteredSignals.length}</Typography>
+              <Typography>All Signal Pairs: {signals.map(s => s.pair).join(', ')}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <ForexSignals signals={filteredSignals} isLoading={loading} />
+      </Grid>
+
+      {/* Performance Metrics */}
+      <Grid item xs={12} md={6}>
+        <PerformanceMetrics metrics={performanceMetrics} />
+      </Grid>
+
+      {/* Risk Management */}
+      <Grid item xs={12} md={6}>
+        <RiskManagement />
+      </Grid>
+
+      {/* Portfolio Chart */}
+      <Grid item xs={12} md={8}>
+        <PortfolioChart />
+      </Grid>
+
+      {/* News Sentiment */}
+      <Grid item xs={12} md={4}>
+        <NewsSentiment />
+      </Grid>
+
+      {/* Live Alerts */}
+      <Grid item xs={12}>
+        <LiveAlerts />
+      </Grid>
+
+      {/* Add ChatWindow */}
+      <Grid item xs={12} md={6}>
+        <ChatWindow />
+      </Grid>
+    </Grid>
+  );
+
+  const renderAnalysis = () => (
+    <Grid container spacing={3}>
+      <Grid item xs={12}>
+        <WalkForwardAnalysis />
+      </Grid>
+    </Grid>
+  );
+
+  const renderCalendar = () => (
+    <Grid container spacing={3}>
+      <Grid item xs={12}>
+        <EconomicCalendar />
+      </Grid>
+    </Grid>
+  );
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="App">
-        <Box sx={{ bgcolor: 'primary.main', color: 'white', py: 2, mb: 3 }}>
-          <Container>
-            <Typography variant="h4" component="h1" align="center">
-              Multi-Agent Trading System
-            </Typography>
-          </Container>
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        {/* Header */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Multi-Agent Trading System
+          </Typography>
+          
+          {/* Navigation Tabs */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant={activeTab === 'dashboard' ? 'contained' : 'outlined'}
+                onClick={() => setActiveTab('dashboard')}
+              >
+                Dashboard
+              </Button>
+              <Button
+                variant={activeTab === 'analysis' ? 'contained' : 'outlined'}
+                onClick={() => setActiveTab('analysis')}
+              >
+                Walk-Forward Analysis
+              </Button>
+              <Button
+                variant={activeTab === 'calendar' ? 'contained' : 'outlined'}
+                onClick={() => setActiveTab('calendar')}
+              >
+                Economic Calendar
+              </Button>
+            </Box>
+          </Box>
         </Box>
-        
-        <Container maxWidth="xl">
-          <Grid container spacing={3}>
-            {/* Forex Pair Selector */}
-            <Grid item xs={12} md={3}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Select Forex Pair
-                </Typography>
-                <ForexPairSelector 
-                  value={selectedPair} 
-                  onChange={handlePairChange} 
-                />
-              </Paper>
-            </Grid>
 
-            {/* Market Data Ticker */}
-            <Grid item xs={12} md={9}>
-              <Paper sx={{ p: 2 }}>
-                <MarketDataTicker data={marketData} />
-              </Paper>
-            </Grid>
-
-            {/* Forex Signals */}
-            <Grid item xs={12} lg={8}>
-              <Paper sx={{ p: 2 }}>
-                <ForexSignals 
-                  signals={signals} 
-                  onSignalSelect={(signal) => console.log('Selected signal:', signal)}
-                />
-              </Paper>
-            </Grid>
-
-            {/* Performance Metrics */}
-            <Grid item xs={12} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <PerformanceMetrics metrics={performanceMetrics} />
-              </Paper>
-            </Grid>
-
-            {/* Risk Management */}
-            <Grid item xs={12} lg={6}>
-              <Paper sx={{ p: 2 }}>
-                <RiskManagement 
-                  accountBalance={10000}
-                  activePositions={[]}
-                  riskParams={riskParams}
-                  onRiskParamsChange={setRiskParams}
-                />
-              </Paper>
-            </Grid>
-
-            {/* News Sentiment */}
-            <Grid item xs={12} lg={6}>
-              <Paper sx={{ p: 2 }}>
-                <NewsSentiment pair={formattedPair} />
-              </Paper>
-            </Grid>
-
-            {/* Portfolio Chart */}
-            <Grid item xs={12} lg={8}>
-              <Paper sx={{ p: 2 }}>
-                <PortfolioChart />
-              </Paper>
-            </Grid>
-
-            {/* Chat Window */}
-            <Grid item xs={12} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <ChatWindow 
-                  messages={chatMessages}
-                  onSend={handleChatSend}
-                  isLoading={isChatLoading}
-                />
-              </Paper>
-            </Grid>
-          </Grid>
-        </Container>
-      </div>
+        {/* Content based on active tab */}
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'analysis' && renderAnalysis()}
+        {activeTab === 'calendar' && renderCalendar()}
+      </Container>
     </ThemeProvider>
   );
 }

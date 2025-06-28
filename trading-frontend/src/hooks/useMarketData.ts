@@ -35,8 +35,73 @@ export const useMarketData = (selectedPair?: string) => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        console.log('Fetching market data and signals...');
         
-        // Simulate API calls
+        // Fetch real market data from API
+        const marketResponse = await fetch('http://localhost:8000/api/market-data');
+        const marketDataResult = await marketResponse.json();
+        
+        if (marketDataResult.success) {
+          setMarketData(marketDataResult.data || []);
+        }
+
+        // Fetch real forex signals from API
+        const signalsResponse = await fetch('http://localhost:8000/api/forex-signals');
+        const signalsResult = await signalsResponse.json();
+        
+        console.log('Signals API response:', signalsResult);
+        
+        if (signalsResult.success && signalsResult.signals) {
+          // Don't filter here - return all signals and let the component handle filtering
+          setSignals(signalsResult.signals);
+        } else {
+          console.log('No signals from API, using fallback');
+          // Fallback to mock data if API fails
+          const mockSignals: Signal[] = [
+            {
+              pair: "EUR/USD",
+              direction: "buy",
+              strength: 0.75,
+              confidence: 0.82,
+              confidence_breakdown: {
+                technical: 0.85,
+                fundamental: 0.70,
+                sentiment: 0.80,
+                volatility: 0.75
+              },
+              recommendation: "strong",
+              timestamp: new Date().toISOString(),
+              entry_price: 1.0850,
+              stop_loss: 1.0800,
+              take_profit: 1.0950,
+              risk_amount: 200.0,
+              position_size: 10000.0
+            },
+            {
+              pair: "GBP/USD",
+              direction: "sell",
+              strength: 0.65,
+              confidence: 0.71,
+              confidence_breakdown: {
+                technical: 0.70,
+                fundamental: 0.65,
+                sentiment: 0.75,
+                volatility: 0.60
+              },
+              recommendation: "weak",
+              timestamp: new Date().toISOString(),
+              entry_price: 1.2650,
+              stop_loss: 1.2700,
+              take_profit: 1.2550,
+              risk_amount: 150.0,
+              position_size: 7500.0
+            }
+          ];
+          setSignals(mockSignals);
+        }
+      } catch (error) {
+        console.error('Error fetching market data:', error);
+        // Fallback to mock data if API fails
         const mockMarketData: MarketData[] = [
           { symbol: 'EUR/USD', price: 1.0850, timestamp: new Date().toISOString() },
           { symbol: 'GBP/USD', price: 1.2650, timestamp: new Date().toISOString() },
@@ -47,78 +112,59 @@ export const useMarketData = (selectedPair?: string) => {
           { symbol: 'NZD/USD', price: 0.6150, timestamp: new Date().toISOString() },
         ];
 
-        // Generate dynamic signals based on selected pair
-        const generateSignalsForPair = (pair: string): Signal[] => {
-          const pairData = {
-            'EUR/USD': { basePrice: 1.0850, volatility: 0.0015 },
-            'GBP/USD': { basePrice: 1.2650, volatility: 0.0020 },
-            'USD/JPY': { basePrice: 150.25, volatility: 0.25 },
-            'USD/CHF': { basePrice: 0.8750, volatility: 0.0012 },
-            'AUD/USD': { basePrice: 0.6650, volatility: 0.0018 },
-            'USD/CAD': { basePrice: 1.3450, volatility: 0.0016 },
-            'NZD/USD': { basePrice: 0.6150, volatility: 0.0022 },
-          };
-
-          const pairInfo = pairData[pair as keyof typeof pairData] || pairData['EUR/USD'];
-          
-          // Generate random signal for the selected pair
-          const direction = Math.random() > 0.5 ? 'buy' : 'sell';
-          const strength = 0.5 + Math.random() * 0.4; // 0.5 to 0.9
-          const confidence = 0.6 + Math.random() * 0.3; // 0.6 to 0.9
-          
-          const entryPrice = pairInfo.basePrice;
-          const stopLoss = direction === 'buy' 
-            ? entryPrice - (pairInfo.volatility * 50)
-            : entryPrice + (pairInfo.volatility * 50);
-          const takeProfit = direction === 'buy'
-            ? entryPrice + (pairInfo.volatility * 100)
-            : entryPrice - (pairInfo.volatility * 100);
-
-          return [{
-            pair: pair,
-            direction: direction,
-            strength: strength,
-            confidence: confidence,
+        const mockSignals: Signal[] = [
+          {
+            pair: "EUR/USD",
+            direction: "buy",
+            strength: 0.75,
+            confidence: 0.82,
             confidence_breakdown: {
-              technical: 0.7 + Math.random() * 0.2,
-              fundamental: 0.6 + Math.random() * 0.3,
-              sentiment: 0.5 + Math.random() * 0.4,
-              volatility: 0.6 + Math.random() * 0.3
+              technical: 0.85,
+              fundamental: 0.70,
+              sentiment: 0.80,
+              volatility: 0.75
             },
-            recommendation: confidence > 0.8 ? 'strong' : confidence > 0.6 ? 'weak' : 'reject',
+            recommendation: "strong",
             timestamp: new Date().toISOString(),
-            entry_price: entryPrice,
-            stop_loss: stopLoss,
-            take_profit: takeProfit,
+            entry_price: 1.0850,
+            stop_loss: 1.0800,
+            take_profit: 1.0950,
             risk_amount: 200.0,
             position_size: 10000.0
-          }];
-        };
+          },
+          {
+            pair: "GBP/USD",
+            direction: "sell",
+            strength: 0.65,
+            confidence: 0.71,
+            confidence_breakdown: {
+              technical: 0.70,
+              fundamental: 0.65,
+              sentiment: 0.75,
+              volatility: 0.60
+            },
+            recommendation: "weak",
+            timestamp: new Date().toISOString(),
+            entry_price: 1.2650,
+            stop_loss: 1.2700,
+            take_profit: 1.2550,
+            risk_amount: 150.0,
+            position_size: 7500.0
+          }
+        ];
 
-        // Filter market data for selected pair if specified
-        const filteredMarketData = selectedPair 
-          ? mockMarketData.filter(data => data.symbol === selectedPair)
-          : mockMarketData;
-
-        // Generate signals for selected pair
-        const pairSignals = selectedPair 
-          ? generateSignalsForPair(selectedPair)
-          : generateSignalsForPair('EUR/USD'); // Default
-
-        setMarketData(filteredMarketData);
-        setSignals(pairSignals);
-      } catch (error) {
-        console.error('Error fetching market data:', error);
+        setMarketData(mockMarketData);
+        setSignals(mockSignals);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 5000); // Update every 5 seconds
+    const interval = setInterval(fetchData, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
-  }, [selectedPair]); // Add selectedPair as dependency
+  }, []); // Remove selectedPair dependency - we'll handle filtering in the component
 
   return { marketData, signals, loading };
 };

@@ -54,7 +54,8 @@ class DataHandler:
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        df.columns = [col.capitalize() for col in df.columns]
+        # FIXED: Keep column names lowercase for consistency with technical indicators
+        df.columns = [col.lower() for col in df.columns]
         
         df.ffill(inplace=True)
         df.bfill(inplace=True)
