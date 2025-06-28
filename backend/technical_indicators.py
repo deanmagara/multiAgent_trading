@@ -372,31 +372,37 @@ class TechnicalIndicators:
         """Calculate all technical indicators and return comprehensive analysis"""
         try:
             # Calculate basic indicators
-            rsi = self.calculate_rsi(df)
-            macd, macd_signal = self.calculate_macd(df)
-            bollinger_upper, bollinger_lower = self.calculate_bollinger_bands(df)
+            rsi = self.calculate_rsi(df['close'])
+            macd_data = self.calculate_macd(df['close'])
+            bb_data = self.calculate_bollinger_bands(df['close'])
             atr = self.calculate_atr(df)
             
             # Calculate trend indicators
-            sma_20 = self.calculate_sma(df, 20)
-            sma_50 = self.calculate_sma(df, 50)
-            ema_12 = self.calculate_ema(df, 12)
-            ema_26 = self.calculate_ema(df, 26)
+            sma_20 = self.calculate_sma(df['close'], 20)
+            sma_50 = self.calculate_sma(df['close'], 50)
+            ema_12 = self.calculate_ema(df['close'], 12)
+            ema_26 = self.calculate_ema(df['close'], 26)
             
-            # Calculate volatility
-            volatility = self.calculate_volatility(df)
+            # Calculate volatility (using ATR as proxy)
+            volatility = atr.iloc[-1] if not atr.empty else 0.001
+            
+            # Extract values for technical score calculation
+            rsi_values = rsi.tolist() if not rsi.empty else [50]
+            macd_values = macd_data['macd'].tolist() if not macd_data.empty else [0]
+            bb_upper_values = bb_data['upper'].tolist() if not bb_data.empty else [df['close'].iloc[-1]]
+            bb_lower_values = bb_data['lower'].tolist() if not bb_data.empty else [df['close'].iloc[-1]]
             
             # Generate technical scores
-            technical_score = self._calculate_technical_score(df, rsi, macd, bollinger_upper, bollinger_lower)
+            technical_score = self._calculate_technical_score(df, rsi_values, macd_values, bb_upper_values, bb_lower_values)
             fundamental_score = self._calculate_fundamental_score(df)
             sentiment_score = self._calculate_sentiment_score(df)
             
             return {
                 'rsi': rsi,
-                'macd': macd,
-                'macd_signal': macd_signal,
-                'bollinger_upper': bollinger_upper,
-                'bollinger_lower': bollinger_lower,
+                'macd': macd_data['macd'],
+                'macd_signal': macd_data['signal'],
+                'bollinger_upper': bb_data['upper'],
+                'bollinger_lower': bb_data['lower'],
                 'atr': atr,
                 'sma_20': sma_20,
                 'sma_50': sma_50,
@@ -406,7 +412,7 @@ class TechnicalIndicators:
                 'technical_score': technical_score,
                 'fundamental_score': fundamental_score,
                 'sentiment_score': sentiment_score,
-                'bollinger_position': self._calculate_bollinger_position(df, bollinger_upper, bollinger_lower)
+                'bollinger_position': self._calculate_bollinger_position(df, bb_upper_values, bb_lower_values)
             }
         except Exception as e:
             print(f"Error calculating indicators: {e}")
@@ -416,7 +422,7 @@ class TechnicalIndicators:
                                  bollinger_upper: List[float], bollinger_lower: List[float]) -> float:
         """Calculate overall technical score"""
         try:
-            latest_price = df['Close'].iloc[-1]
+            latest_price = df['close'].iloc[-1]
             latest_rsi = rsi[-1] if rsi else 50
             latest_macd = macd[-1] if macd else 0
             latest_bollinger_upper = bollinger_upper[-1] if bollinger_upper else latest_price

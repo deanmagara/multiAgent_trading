@@ -132,20 +132,26 @@ class EnsembleVotingSystem:
         
         # Analyze multiple timeframes
         mtf_analysis = self.mtf_analyzer.analyze_all_timeframes(df)
-        combined = mtf_analysis['combined_analysis']
+        combined = mtf_analysis.combined_analysis
+        
+        print("Combined analysis:", combined, type(combined))
+        
+        # FIXED: Use correct key names from the dictionary
+        consensus_trend = combined.get('consensus_trend', 'sideways')
+        weighted_strength = combined.get('weighted_strength', 0.0)
         
         # Determine signal based on overall trend
-        if combined['overall_trend'] == 'bullish':
+        if consensus_trend == 'bullish':
             signal = 'buy'
-            confidence = combined['total_strength']
-        elif combined['overall_trend'] == 'bearish':
+            confidence = weighted_strength
+        elif consensus_trend == 'bearish':
             signal = 'sell'
-            confidence = abs(combined['total_strength'])
+            confidence = abs(weighted_strength)
         else:
             signal = 'hold'
             confidence = 0.5
         
-        reasoning = f"Multi-timeframe trend: {combined['overall_trend']}"
+        reasoning = f"Multi-timeframe trend: {consensus_trend}"
         
         return AgentVote(
             agent_name='multi_timeframe_agent',
@@ -205,7 +211,7 @@ class EnsembleVotingSystem:
         df = self._prepare_dataframe(market_data)
         
         # Calculate volatility
-        atr = self.tech_indicators.calculate_atr(df['high'], df['low'], df['close'])
+        atr = self.tech_indicators.calculate_atr(df)
         bb = self.tech_indicators.calculate_bollinger_bands(df['close'])
         
         current_atr = atr.iloc[-1]
@@ -231,14 +237,34 @@ class EnsembleVotingSystem:
     
     def _prepare_dataframe(self, market_data: Dict) -> pd.DataFrame:
         """Prepare DataFrame from market data"""
-        # FIXED: Handle the case where market_data might be a list of records
-        if isinstance(market_data, list):
-            df = pd.DataFrame(market_data)
+        # Handle different input types
+        if isinstance(market_data, pd.DataFrame):
+            # If it's already a DataFrame, return it
+            return market_data
         elif isinstance(market_data, dict) and 'market_data' in market_data:
-            # Handle the case where market_data is wrapped in a dict
-            df = pd.DataFrame(market_data['market_data'])
+            # If it's a dict with 'market_data' key, extract the DataFrame
+            if isinstance(market_data['market_data'], pd.DataFrame):
+                return market_data['market_data']
+            else:
+                # Convert records to DataFrame
+                df = pd.DataFrame(market_data['market_data'])
+        elif isinstance(market_data, list):
+            # If it's a list of records
+            df = pd.DataFrame(market_data)
         else:
+            # If it's a single record dict
             df = pd.DataFrame([market_data])
+        
+        # Ensure we have a DatetimeIndex
+        if not isinstance(df.index, pd.DatetimeIndex):
+            # Try to create a DatetimeIndex from the data
+            if 'date' in df.columns:
+                df.index = pd.to_datetime(df['date'])
+            elif 'timestamp' in df.columns:
+                df.index = pd.to_datetime(df['timestamp'])
+            else:
+                # Create a default DatetimeIndex
+                df.index = pd.date_range(start='2020-01-01', periods=len(df), freq='D')
         
         # Ensure we have the required columns
         required_columns = ['open', 'high', 'low', 'close', 'volume']
@@ -279,10 +305,18 @@ class EnsembleVotingSystem:
             consensus_breakdown=signal_counts
         )
     
-    def get_ensemble_signal(self, market_data: Dict, news_data: Dict = None) -> EnsembleResult:
+    def get_ensemble_signal(self, market_data, news_data: Dict = None) -> EnsembleResult:
         """Get ensemble trading signal"""
+        # Handle both DataFrame and Dict inputs
+        if isinstance(market_data, pd.DataFrame):
+            # If it's a DataFrame, wrap it in the expected format
+            data_dict = {'market_data': market_data}
+        else:
+            # If it's already a dict, use it as is
+            data_dict = market_data
+        
         # Collect votes from all agents
-        votes = self.collect_votes(market_data, news_data)
+        votes = self.collect_votes(data_dict, news_data)
         
         # Calculate ensemble result
         result = self.calculate_ensemble_result(votes)

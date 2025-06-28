@@ -21,6 +21,7 @@ import EconomicCalendar from './components/EconomicCalendar';
 // Import hooks and services
 import { useMarketData } from './hooks/useMarketData';
 import { api } from './services/api';
+import { Signal } from './types';
 
 // Import ChatWindow component
 import ChatWindow from './components/ChatWindow';
@@ -60,21 +61,32 @@ function App() {
     return pairMap[pair] || pair.replace('=X', '').replace('USD', '/USD');
   };
 
-  // Filter signals for selected pair
-  const filteredSignals = signals.filter(signal => {
+  // Filter signals for selected pair - IMPROVED LOGIC
+  const filteredSignals: Signal[] = signals.filter(signal => {
     const formattedSelectedPair = formatPairForSignals(selectedPair);
-    console.log(`Comparing signal pair: "${signal.pair}" with formatted selected pair: "${formattedSelectedPair}"`);
-    return signal.pair === formattedSelectedPair;
+    const signalPair = signal.pair;
+    
+    console.log(`🔍 Filtering: Comparing signal pair: "${signalPair}" with formatted selected pair: "${formattedSelectedPair}"`);
+    console.log(`🔍 Signal object:`, signal);
+    
+    // More flexible matching
+    const match = signalPair === formattedSelectedPair || 
+                  signalPair === selectedPair ||
+                  signalPair.replace('/', '') === selectedPair.replace('=X', '');
+    
+    console.log(`🔍 Match result: ${match}`);
+    return match;
   });
 
   // Debug logging
-  console.log('Debug:', {
+  /*console.log('📊 App Debug Info:', {
     selectedPair,
     formattedSelectedPair: formatPairForSignals(selectedPair),
     allSignals: signals,
     filteredSignals,
-    loading
-  });
+    loading,
+    signalPairs: signals.map(s => s.pair)
+  });*/
 
   useEffect(() => {
     // Fetch performance metrics
@@ -134,7 +146,7 @@ function App() {
 
       {/* Forex Signals */}
       <Grid item xs={12} md={9}>
-        <Grid item xs={12}>
+        {/*<Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6">Debug Info</Typography>
@@ -143,9 +155,10 @@ function App() {
               <Typography>Total Signals: {signals.length}</Typography>
               <Typography>Filtered Signals: {filteredSignals.length}</Typography>
               <Typography>All Signal Pairs: {signals.map(s => s.pair).join(', ')}</Typography>
+              <Typography>Loading: {loading ? 'Yes' : 'No'}</Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid>*/}
         <ForexSignals signals={filteredSignals} isLoading={loading} />
       </Grid>
 
@@ -200,39 +213,41 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="xl" sx={{ py: 3 }}>
-        {/* Header */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Multi-Agent Trading System
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h3" component="h1" gutterBottom>
+            AI Trading Platform
           </Typography>
-          
-          {/* Navigation Tabs */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                variant={activeTab === 'dashboard' ? 'contained' : 'outlined'}
-                onClick={() => setActiveTab('dashboard')}
-              >
-                Dashboard
-              </Button>
-              <Button
-                variant={activeTab === 'analysis' ? 'contained' : 'outlined'}
-                onClick={() => setActiveTab('analysis')}
-              >
-                Walk-Forward Analysis
-              </Button>
-              <Button
-                variant={activeTab === 'calendar' ? 'contained' : 'outlined'}
-                onClick={() => setActiveTab('calendar')}
-              >
-                Economic Calendar
-              </Button>
-            </Box>
-          </Box>
+          <Typography variant="h6" color="text.secondary">
+            Multi-Agent Forex Trading with Real-time Signals
+          </Typography>
         </Box>
 
-        {/* Content based on active tab */}
+        {/* Navigation Tabs */}
+        <Box sx={{ mb: 3 }}>
+          <Button 
+            variant={activeTab === 'dashboard' ? 'contained' : 'outlined'} 
+            onClick={() => setActiveTab('dashboard')}
+            sx={{ mr: 2 }}
+          >
+            Dashboard
+          </Button>
+          <Button 
+            variant={activeTab === 'analysis' ? 'contained' : 'outlined'} 
+            onClick={() => setActiveTab('analysis')}
+            sx={{ mr: 2 }}
+          >
+            Analysis
+          </Button>
+          <Button 
+            variant={activeTab === 'calendar' ? 'contained' : 'outlined'} 
+            onClick={() => setActiveTab('calendar')}
+          >
+            Economic Calendar
+          </Button>
+        </Box>
+
+        {/* Content */}
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'analysis' && renderAnalysis()}
         {activeTab === 'calendar' && renderCalendar()}

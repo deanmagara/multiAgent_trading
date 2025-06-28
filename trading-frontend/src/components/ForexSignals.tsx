@@ -8,8 +8,6 @@ import {
   Box,
   Grid,
   LinearProgress,
-  Alert,
-  AlertTitle,
   IconButton,
   Collapse
 } from '@mui/material';
@@ -18,32 +16,9 @@ import {
   TrendingDown,
   ExpandMore,
   ExpandLess,
-  BarChart,
-  Timeline,
-  Flag,
-  Chat,
-  FlashOn
+  BarChart
 } from '@mui/icons-material';
-
-interface Signal {
-  pair: string;
-  direction: 'buy' | 'sell';
-  strength: number;
-  confidence: number;
-  confidence_breakdown?: {
-    technical: number;
-    fundamental: number;
-    sentiment: number;
-    volatility: number;
-  };
-  recommendation: 'strong' | 'weak' | 'reject';
-  timestamp: string;
-  entry_price: number;
-  stop_loss: number;
-  take_profit: number;
-  risk_amount: number;
-  position_size: number;
-}
+import { Signal } from '../types';
 
 interface ForexSignalsProps {
   signals?: Signal[];
@@ -58,7 +33,6 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
 }) => {
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [expandedSignals, setExpandedSignals] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState(isLoading);
 
   const getDirectionIcon = (direction: string) => {
     return direction === 'buy' ? (
@@ -72,6 +46,8 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
     switch (recommendation) {
       case 'strong':
         return <Chip label="Strong" color="success" size="small" />;
+      case 'moderate':
+        return <Chip label="Moderate" color="warning" size="small" />;
       case 'weak':
         return <Chip label="Weak" color="warning" size="small" />;
       case 'reject':
@@ -101,15 +77,23 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
     setExpandedSignals(newExpanded);
   };
 
+  // Debug logging
+  console.log('ForexSignals component:', {
+    signals,
+    signalsLength: signals.length,
+    isLoading,
+    selectedSignal
+  });
+
   if (!signals || signals.length === 0) {
     return (
       <Card>
         <CardHeader title="Forex Signals" />
         <CardContent>
           <Typography variant="body2" color="text.secondary" align="center">
-            {loading ? 'Loading signals...' : 'No signals available for the selected pair'}
+            {isLoading ? 'Loading signals...' : 'No signals available for the selected pair'}
           </Typography>
-          {!loading && (
+          {!isLoading && (
             <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 1 }}>
               Try selecting a different currency pair or check back later.
             </Typography>
@@ -119,7 +103,7 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader title="Forex Signals" />
@@ -201,107 +185,86 @@ const ForexSignals: React.FC<ForexSignalsProps> = ({
                     <Grid item xs={6} md={3}>
                       <Typography variant="caption" color="text.secondary">Position Size</Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        {signal.position_size.toFixed(2)}
+                        {signal.position_size.toFixed(0)}
                       </Typography>
                     </Grid>
                   </Grid>
 
-                  <Collapse in={expandedSignals.has(index)}>
-                    <Box sx={{ mt: 2 }}>
-                      {/* Signal Confidence */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="body2" fontWeight="medium">Signal Confidence</Typography>
-                        <Typography 
-                          variant="body2" 
-                          fontWeight="bold"
-                          color={getConfidenceColor(signal.confidence)}
-                        >
-                          {(signal.confidence * 100).toFixed(1)}%
-                        </Typography>
-                      </Box>
-                      
-                      {/* Confidence Breakdown */}
-                      {signal.confidence_breakdown && (
-                        <Grid container spacing={2} sx={{ mb: 2 }}>
-                          <Grid item xs={6} md={3}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                              <Timeline fontSize="small" />
-                              <Typography variant="caption">Technical</Typography>
-                            </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={signal.confidence_breakdown.technical * 100} 
-                              sx={{ height: 8, borderRadius: 4 }}
-                            />
-                            <Typography variant="caption">
-                              {(signal.confidence_breakdown.technical * 100).toFixed(0)}%
-                            </Typography>
-                          </Grid>
-                          
-                          <Grid item xs={6} md={3}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                              <Flag fontSize="small" />
-                              <Typography variant="caption">Fundamental</Typography>
-                            </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={signal.confidence_breakdown.fundamental * 100} 
-                              sx={{ height: 8, borderRadius: 4 }}
-                            />
-                            <Typography variant="caption">
-                              {(signal.confidence_breakdown.fundamental * 100).toFixed(0)}%
-                            </Typography>
-                          </Grid>
-                          
-                          <Grid item xs={6} md={3}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                              <Chat fontSize="small" />
-                              <Typography variant="caption">Sentiment</Typography>
-                            </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={signal.confidence_breakdown.sentiment * 100} 
-                              sx={{ height: 8, borderRadius: 4 }}
-                            />
-                            <Typography variant="caption">
-                              {(signal.confidence_breakdown.sentiment * 100).toFixed(0)}%
-                            </Typography>
-                          </Grid>
-                          
-                          <Grid item xs={6} md={3}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                              <FlashOn fontSize="small" />
-                              <Typography variant="caption">Volatility</Typography>
-                            </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={signal.confidence_breakdown.volatility * 100} 
-                              sx={{ height: 8, borderRadius: 4 }}
-                            />
-                            <Typography variant="caption">
-                              {(signal.confidence_breakdown.volatility * 100).toFixed(0)}%
-                            </Typography>
-                          </Grid>
-                        </Grid>
-                      )}
+                  {/* Confidence and Strength */}
+                  <Box sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary">Confidence</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {Math.round(signal.confidence * 100)}%
+                      </Typography>
+                    </Box>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={signal.confidence * 100}
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'grey.300',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: getConfidenceColor(signal.confidence)
+                        }
+                      }}
+                    />
+                  </Box>
 
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2">
-                          Risk Amount: ${signal.risk_amount.toFixed(2)}
-                        </Typography>
-                        <Typography variant="body2">
-                          Strength: {(signal.strength * 100).toFixed(0)}%
-                        </Typography>
-                      </Box>
+                  {/* Expanded Details */}
+                  <Collapse in={expandedSignals.has(index)}>
+                    <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'grey.300' }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" gutterBottom>Confidence Breakdown</Typography>
+                          {signal.confidence_breakdown && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">Technical</Typography>
+                                <Typography variant="caption">{Math.round(signal.confidence_breakdown.technical * 100)}%</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">Fundamental</Typography>
+                                <Typography variant="caption">{Math.round(signal.confidence_breakdown.fundamental * 100)}%</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">Sentiment</Typography>
+                                <Typography variant="caption">{Math.round(signal.confidence_breakdown.sentiment * 100)}%</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">Volatility</Typography>
+                                <Typography variant="caption">{Math.round(signal.confidence_breakdown.volatility * 100)}%</Typography>
+                              </Box>
+                            </Box>
+                          )}
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" gutterBottom>Technical Analysis</Typography>
+                          {signal.analysis && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">RSI</Typography>
+                                <Typography variant="caption">{signal.analysis.rsi}</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">MACD</Typography>
+                                <Typography variant="caption">{signal.analysis.macd}</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">BB Position</Typography>
+                                <Typography variant="caption">{signal.analysis.bollinger_position}</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">Trend Strength</Typography>
+                                <Typography variant="caption">{signal.analysis.trend_strength}</Typography>
+                              </Box>
+                            </Box>
+                          )}
+                        </Grid>
+                      </Grid>
                     </Box>
                   </Collapse>
-
-                  {signal.recommendation === 'reject' && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                      <AlertTitle>Signal Rejected</AlertTitle>
-                      Signal rejected due to low confidence or risk management rules
-                    </Alert>
-                  )}
                 </CardContent>
               </Card>
             ))}

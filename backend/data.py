@@ -24,15 +24,24 @@ class DataHandler:
             return self.data_cache[cache_key].copy()
 
         try:
-            df = yf.download(symbol, period=period, interval=interval, progress=False)
+            # Download data with explicit auto_adjust parameter to avoid warning
+            df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=True)
+            
             if df.empty:
                 print(f"No data found for symbol {symbol} with period {period} and interval {interval}.")
                 return None
             
-            # Ensure the index is a DatetimeIndex
+            # Ensure the index is a DatetimeIndex and reset it properly
             df.index = pd.to_datetime(df.index)
-
+            
+            # Preprocess the data
             df = self.preprocess_data(df)
+            
+            # Double-check that the index is still a DatetimeIndex
+            if not isinstance(df.index, pd.DatetimeIndex):
+                print(f"Warning: Index is not DatetimeIndex for {symbol}, converting...")
+                df.index = pd.to_datetime(df.index)
+            
             self.data_cache[cache_key] = df
             return df.copy()
 
@@ -50,15 +59,26 @@ class DataHandler:
         """
         Preprocesses the dataframe. Fills missing values and ensures correct dtypes.
         """
+        # Store the original index
+        original_index = df.index
+        
         # If yfinance returns a MultiIndex (e.g., [('Open', ''), ...]), flatten it.
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # FIXED: Keep column names lowercase for consistency with technical indicators
+        # Convert column names to lowercase for consistency with technical indicators
         df.columns = [col.lower() for col in df.columns]
         
+        # Fill missing values
         df.ffill(inplace=True)
         df.bfill(inplace=True)
+        
+        # Ensure the index is preserved as DatetimeIndex
+        df.index = pd.to_datetime(original_index)
+        
+        # Verify the data structure
+        print(f"Data shape: {df.shape}, Index type: {type(df.index)}, Columns: {list(df.columns)}")
+        
         return df
 
 data_handler = DataHandler()
