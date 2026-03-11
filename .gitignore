@@ -1,4 +1,6 @@
 .env/
-node_modules
-node_modules
-node_modules
+node_modules/
+Update.docx
+technical.png
+deepseek_mermaid.png
+.DS_Store
