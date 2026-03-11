@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Grid, Typography, Box, Button, Card, CardContent } from '@mui/material';
+import { Container, Grid, Typography, Box, Button } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import './App.css';
@@ -7,7 +7,6 @@ import './App.css';
 // Import original components
 import MarketDataTicker from './components/MarketDataTicker';
 import ForexPairSelector from './components/ForexPairSelector';
-import ForexSignals from './components/ForexSignals';
 import NewsSentiment from './components/NewsSentiment';
 import PortfolioChart from './components/PortfolioChart';
 import PerformanceMetrics from './components/PerformanceMetrics';
@@ -20,11 +19,12 @@ import EconomicCalendar from './components/EconomicCalendar';
 
 // Import hooks and services
 import { useMarketData } from './hooks/useMarketData';
+import { useWebSocket } from './hooks/useWebSocket';
 import { api } from './services/api';
-import { Signal } from './types';
 
 // Import ChatWindow component
 import ChatWindow from './components/ChatWindow';
+import RealTimeSignals from './components/RealTimeSignals';
 
 const theme = createTheme({
   palette: {
@@ -44,7 +44,10 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'analysis', 'calendar'
 
   // Get market data with selected pair
-  const { marketData, signals, loading } = useMarketData();
+  const { marketData, loading } = useMarketData();
+  
+  // Get real-time signals from WebSocket
+  const { signals: realTimeSignals, isConnected, error } = useWebSocket('ws://localhost:8000/api/ws/signals');
 
   // Convert pair format for signals (EURUSD=X -> EUR/USD)
   const formatPairForSignals = (pair: string): string => {
@@ -62,7 +65,7 @@ function App() {
   };
 
   // Filter signals for selected pair - IMPROVED LOGIC
-  const filteredSignals: Signal[] = signals.filter(signal => {
+  const filteredSignals = realTimeSignals.filter(signal => {
     const formattedSelectedPair = formatPairForSignals(selectedPair);
     const signalPair = signal.pair;
     
@@ -144,22 +147,13 @@ function App() {
         />
       </Grid>
 
-      {/* Forex Signals */}
+      {/* Real-Time Signals */}
       <Grid item xs={12} md={9}>
-        {/*<Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Debug Info</Typography>
-              <Typography>Selected Pair: {selectedPair}</Typography>
-              <Typography>Formatted Pair: {formatPairForSignals(selectedPair)}</Typography>
-              <Typography>Total Signals: {signals.length}</Typography>
-              <Typography>Filtered Signals: {filteredSignals.length}</Typography>
-              <Typography>All Signal Pairs: {signals.map(s => s.pair).join(', ')}</Typography>
-              <Typography>Loading: {loading ? 'Yes' : 'No'}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>*/}
-        <ForexSignals signals={filteredSignals} isLoading={loading} />
+        <RealTimeSignals 
+          signals={realTimeSignals} 
+          isConnected={isConnected} 
+          error={error} 
+        />
       </Grid>
 
       {/* Performance Metrics */}

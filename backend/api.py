@@ -21,6 +21,10 @@ from .technical_indicators import TechnicalIndicators
 from .multi_timeframe_analyzer import MultiTimeframeAnalyzer
 from .capital_allocator import RiskManager
 from .signal_generator import signal_generator
+from .websocket_broadcast import active_connections, broadcast_signal
+import threading
+
+# Use active_connections in your WebSocket endpoint  # Import the broadcast function
 
 app = FastAPI()
 
@@ -445,6 +449,17 @@ async def websocket_alerts(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+@router.websocket("/ws/signals")
+async def websocket_signals(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+
 async def broadcast_alert(alert_type: str, message: str, data: dict = None):
     """Broadcast alert to all connected clients"""
     alert = {
@@ -584,5 +599,204 @@ async def get_economic_calendar(
 ):
     return {"success": True, "events": []}
 
+@router.get("/portfolio-history")
+async def get_portfolio_history():
+    """Get real-time portfolio performance history"""
+    try:
+        # Get current forex signals to calculate portfolio performance
+        signals = signal_generator.generate_all_signals()
+        
+        # Calculate portfolio performance based on signals
+        initial_capital = 10000
+        current_value = initial_capital
+        trades = []
+        
+        # Simulate portfolio performance based on signals
+        for signal in signals:
+            if signal and signal.get('direction') in ['buy', 'sell']:
+                # Calculate trade performance
+                entry_price = signal.get('entry_price', 0)
+                current_price = entry_price * (1 + (signal.get('strength', 0.5) - 0.5) * 0.02)
+                pnl = (current_price - entry_price) / entry_price * signal.get('position_size', 100)
+                
+                current_value += pnl
+                trades.append({
+                    'pair': signal.get('pair'),
+                    'direction': signal.get('direction'),
+                    'entry_price': entry_price,
+                    'current_price': current_price,
+                    'pnl': pnl,
+                    'timestamp': signal.get('timestamp')
+                })
+        
+        # Generate historical data points
+        history = []
+        base_value = initial_capital
+        for i in range(30, -1, -1):
+            date = datetime.now() - timedelta(days=i)
+            # Add some volatility based on recent signals
+            daily_return = 0.001  # Base daily return
+            if trades:
+                recent_trades = [t for t in trades if (datetime.now() - datetime.fromisoformat(t['timestamp'])).days <= i]
+                if recent_trades:
+                    daily_return += sum(t['pnl'] for t in recent_trades) / len(recent_trades) / base_value
+            
+            base_value *= (1 + daily_return)
+            history.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'value': round(base_value, 2),
+                'change': daily_return * 100
+            })
+        
+        total_return = (current_value - initial_capital) / initial_capital
+        
+        return {
+            'success': True,
+            'data': {
+                'current_value': round(current_value, 2),
+                'initial_capital': initial_capital,
+                'total_return': round(total_return, 4),
+                'total_pnl': round(current_value - initial_capital, 2),
+                'history': history,
+                'recent_trades': trades[-5:] if trades else [],  # Last 5 trades
+                'total_trades': len(trades)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error getting portfolio history: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'data': None
+        }
+
+@router.get("/real-time-signals")
+async def get_real_time_signals():
+    """Get real-time trading signals and trigger alerts"""
+    try:
+        # Generate signals for all pairs
+        signals = signal_generator.generate_all_signals()
+        
+        # Filter for actionable signals (not 'hold')
+        actionable_signals = [s for s in signals if s and s.get('direction') != 'hold']
+        
+        # Broadcast alerts for new signals
+        for signal in actionable_signals:
+            await broadcast_alert(
+                'signal',
+                f"New {signal.get('pair')} {signal.get('direction')} signal",
+                signal
+            )
+        
+        return {
+            'success': True,
+            'signals': actionable_signals,
+            'timestamp': datetime.now().isoformat(),
+            'total_signals': len(actionable_signals)
+        }
+        
+    except Exception as e:
+        print(f"Error generating real-time signals: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'signals': []
+        }
+
+@router.get("/historical-signals")
+async def get_historical_signals(limit: int = 100):
+    """Get historical signals for frontend display"""
+    try:
+        signals = []
+        with open("signal_log.jsonl", "r") as f:
+            for line in f:
+                signals.append(json.loads(line))
+        
+        # Return most recent signals
+        return {
+            'success': True,
+            'signals': signals[-limit:],
+            'total_count': len(signals)
+        }
+    except FileNotFoundError:
+        return {
+            'success': False,
+            'error': 'No signal log found',
+            'signals': []
+        }
+
+@router.get("/performance-metrics")
+async def get_performance_metrics():
+    """Get calculated performance metrics"""
+    try:
+        # Import and run performance analysis
+        from .performance_analysis import load_signals, simulate_trades, calculate_performance_metrics
+        
+        signals = load_signals()
+        trades, final_capital = simulate_trades(signals)
+        metrics = calculate_performance_metrics(trades)
+        
+        return {
+            'success': True,
+            'metrics': metrics,
+            'final_capital': final_capital
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def combine_signals(ml_signal, tech_signal):
+    # Example: If both agree, boost confidence; if not, lower it
+    if ml_signal['signal'] == tech_signal['direction']:
+        final_signal = ml_signal['signal']
+        confidence = (ml_signal['confidence'] + tech_signal['confidence']) / 2 + 0.1
+    else:
+        final_signal = 'hold'
+        confidence = min(ml_signal['confidence'], tech_signal['confidence']) / 2
+    return {"signal": final_signal, "confidence": confidence}
+
 # Include the router in the main FastAPI app
 app.include_router(router, prefix="/api")
+
+def start_realtime_monitor():
+    """Start the real-time monitor in a separate thread"""
+    def run_monitor():
+        try:
+            print(" Starting real-time monitor thread...")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            from .realtime_monitor import real_time_monitor
+            print("✅ Real-time monitor imported successfully")
+            loop.run_until_complete(real_time_monitor())
+        except Exception as e:
+            print(f"❌ Error in real-time monitor: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    print(" Creating real-time monitor thread...")
+    monitor_thread = threading.Thread(target=run_monitor, daemon=True)
+    monitor_thread.start()
+    print("✅ Real-time monitor thread started")
+
+# Add this line to actually start the monitor
+start_realtime_monitor()
+
+@router.get("/test-intraday")
+async def test_intraday_data():
+    """Test intraday data fetching"""
+    try:
+        df = data_handler.fetch_intraday_data("EURUSD=X", interval="1m", period="1d")
+        if df is not None and not df.empty:
+            return {
+                "success": True,
+                "data_shape": df.shape,
+                "columns": list(df.columns),
+                "last_row": df.iloc[-1].to_dict()
+            }
+        else:
+            return {"success": False, "error": "No data returned"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

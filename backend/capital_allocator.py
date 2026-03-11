@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+import asyncio
+from .data import data_handler
+from .signal_generator import SignalGenerator
 
 @dataclass
 class RiskParameters:
@@ -16,7 +19,10 @@ class RiskManager:
     def __init__(self, risk_params: RiskParameters = None):
         self.risk_params = risk_params or RiskParameters()
         self.active_positions: Dict[str, Dict] = {}
-        
+        self.initial_capital = 10000.0
+        self.current_capital = 10000.0
+        self.max_drawdown = 0.15  # 15% max drawdown
+
     def calculate_position_size(self, 
                               account_balance: float,
                               entry_price: float,
@@ -74,6 +80,19 @@ class RiskManager:
         # Count similar base currencies
         similar_count = base_currencies.count(new_base)
         return similar_count >= 2  # Allow max 2 positions in same base currency
+
+    def check_drawdown_limit(self) -> bool:
+        """Check if current drawdown exceeds limit"""
+        drawdown = (self.initial_capital - self.current_capital) / self.initial_capital
+        return drawdown <= self.max_drawdown
+
+    def calculate_var(self, returns: list, confidence: float = 0.95) -> float:
+        """Calculate Value at Risk (VaR) for the portfolio"""
+        if not returns:
+            return 0.0
+        import numpy as np
+        var = np.percentile(returns, (1 - confidence) * 100)
+        return abs(var)
     
     def add_position(self, pair: str, position_data: Dict):
         """Add new position to tracking"""

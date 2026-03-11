@@ -55,6 +55,13 @@ class DataHandler:
         #     raise ValueError(f"Unsupported forex pair: {pair}")
         return self.fetch_data(pair, period, interval, force_reload)
 
+    def fetch_intraday_data(self, symbol: str, interval: str = "1m", period: str = "1d", force_reload: bool = False) -> Optional[pd.DataFrame]:
+        """
+        Fetches intraday market data (e.g., 1m, 5m candles).
+        This is an alias for fetch_data with intraday intervals.
+        """
+        return self.fetch_data(symbol, period=period, interval=interval, force_reload=force_reload)
+
     def preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Preprocesses the dataframe. Fills missing values and ensures correct dtypes.
